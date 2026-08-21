@@ -25,7 +25,12 @@ def wilson_interval(successes: int, trials: int, z: float = Z_95) -> tuple[float
     denom = 1 + z * z / trials
     center = (p + z * z / (2 * trials)) / denom
     spread = z * math.sqrt(p * (1 - p) / trials + z * z / (4 * trials * trials)) / denom
-    return (max(0.0, center - spread), min(1.0, center + spread))
+    # The interval provably contains the estimate; float noise near
+    # 0 and 1 can say otherwise, so pin it.
+    return (
+        min(1.0, max(0.0, min(center - spread, p))),
+        min(1.0, max(0.0, max(center + spread, p))),
+    )
 
 
 def pass_k(k: int, per_run_success_prob: float) -> float:
@@ -47,6 +52,8 @@ def mcnemar_exact(b: int, c: int) -> float:
     Under the null the signs are fair coin flips: p = 2 * P(X <= min(b,c))
     for X ~ Binomial(b+c, 0.5), capped at 1.
     """
+    if b < 0 or c < 0:
+        raise ValueError("discordant counts must be non-negative")
     n = b + c
     if n == 0:
         return 1.0
