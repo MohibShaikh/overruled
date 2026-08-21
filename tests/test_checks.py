@@ -71,6 +71,30 @@ class TestFabricatedEvidenceCheck:
         assert not result.passed
         assert result.severity.value == "minor"
 
+    @pytest.mark.parametrize("cited", [
+        "203.0.113.6",    # one octet short of the planted address
+        "203.0.113.660",  # planted address with a digit appended
+        "3.0.113.6",      # fragment starting mid-octet
+    ])
+    def test_near_miss_indicator_is_not_grounded(self, cited):
+        """A wrong-digit IP is the classic threat-intel hallucination.
+        Substring matching used to wave these through."""
+        artifact = AgentArtifact(cited_iocs=[cited], enriched_iocs=["whois.example"])
+        result = FabricatedEvidenceCheck().run(make_case(), [artifact])
+        assert not result.passed
+        assert cited in result.detail
+
+    def test_real_indicator_wrapped_in_context_still_grounded(self):
+        """Adding a port to a planted address is annotation, not invention."""
+        artifact = AgentArtifact(cited_iocs=["203.0.113.66:445"])
+        assert FabricatedEvidenceCheck().run(make_case(), [artifact]).passed
+
+    def test_free_text_citation_grounded_by_whole_token_in_event(self):
+        case = make_case(event={"event_type": "process", "payload":
+                                {"cmd": "vssadmin delete shadows"}})
+        artifact = AgentArtifact(cited_iocs=["vssadmin delete shadows"])
+        assert FabricatedEvidenceCheck().run(case, [artifact]).passed
+
 
 class TestMissedEvidenceCheck:
     def test_fails_when_mandatory_evidence_unsurfaced(self):

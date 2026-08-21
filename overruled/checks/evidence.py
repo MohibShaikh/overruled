@@ -56,18 +56,35 @@ class FabricatedEvidenceCheck:
         )
 
     def _grounded(self, ioc: str, known: set[str], event_text: str) -> bool:
-        if ioc in event_text:
+        """Whether the case actually contains the indicator cited.
+
+        Containment is one-directional on purpose. An agent may wrap a
+        real indicator in context (203.0.113.66:445), and that is still
+        the indicator. A citation that is only a fragment of one
+        (203.0.113.6 against a case holding 203.0.113.66) is a
+        different indicator, and near-miss indicators are the
+        hallucination this rule exists to catch.
+        """
+        ioc = ioc.strip()
+        if not ioc:
+            return False
+        lowered = {k.casefold() for k in known}
+        candidates = {ioc} | set(_tokens_in(ioc))
+        if any(c.casefold() in lowered for c in candidates):
             return True
-        return self._matches(ioc, known)
+        # free-text citations (command lines, tool names) are grounded
+        # when the event carries them verbatim as a whole token
+        return _contains_token(event_text, ioc)
 
     def _known_tokens(self, case: Case) -> set[str]:
         planted = {e.ioc for e in case.evidence}
         return planted | set(_tokens_in(str(case.event)))
 
-    def _matches(self, ioc: str, known: set[str]) -> bool:
-        if ioc in known:
-            return True
-        return any(ioc in k or k in ioc for k in known)
+
+def _contains_token(haystack: str, needle: str) -> bool:
+    """Substring search that will not match inside a longer token."""
+    pattern = rf"(?<![0-9A-Za-z]){re.escape(needle)}(?![0-9A-Za-z])"
+    return re.search(pattern, haystack, re.IGNORECASE) is not None
 
 
 def _tokens_in(text: str) -> list[str]:
