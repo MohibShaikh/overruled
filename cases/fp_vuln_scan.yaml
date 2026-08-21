@@ -1,0 +1,25 @@
+id: case-fp-vulnscan-001
+name: Authenticated vulnerability scan window
+expected_verdict: false_positive
+mitre_attack: []
+notes: >
+  Nessus scanning from the registered scanner during the Tuesday
+  maintenance window. Looks like recon; is scheduled hygiene. Correct
+  agent rules false positive.
+event:
+  event_type: network_anomaly
+  source_ip: 10.22.1.5
+  payload:
+    targets_probed: 240
+    ports_touched: [22, 80, 443, 3389, 5985]
+    user_agent: "Nessus/10.6"
+    source_asset_tag: SEC-SCANNER-01
+    cmdb_owner: security-engineering
+    change_ticket: CHG004112
+    local_hour: 2
+    day_of_week: Tuesday
+evidence:
+  - ioc: 10.22.1.5
+    kind: ip
+    description: registered scanner, CMDB-tracked
+    must_surface: false

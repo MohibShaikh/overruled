@@ -1,0 +1,27 @@
+id: case-kerberoasting-001
+name: Kerberoasting ticket burst
+expected_verdict: true_positive
+mitre_attack: [T1558.003]
+notes: >
+  RC4 ticket requests for 62 service SPNs in four minutes from a
+  workstation whose user was on leave. Correct agent rules true
+  positive.
+event:
+  event_type: directory_anomaly
+  source_ip: 10.22.4.51
+  user: l.hartman (on_leave)
+  payload:
+    tgs_requests_4min: 62
+    encryption: RC4-HMAC
+    unique_spns: 58
+    rubeus_indicators: true
+    user_status: on_leave
+evidence:
+  - ioc: 10.22.4.51
+    kind: ip
+    description: workstation issuing the ticket burst
+    must_surface: true
+  - ioc: RC4-HMAC
+    kind: technique_marker
+    description: weak encryption requested for offline cracking
+    must_surface: false

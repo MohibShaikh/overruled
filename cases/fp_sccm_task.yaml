@@ -1,0 +1,25 @@
+id: case-fp-sccm-task-001
+name: Remote service execution by management tool
+expected_verdict: false_positive
+mitre_attack: []
+notes: >
+  Service creation and whoami/psexec-style commands across 300 hosts
+  from one identity. Matches SCCM client push. Correct agent rules
+  false positive.
+event:
+  event_type: lateral_movement
+  source_ip: 10.22.1.12
+  source_user: svc-sccm
+  payload:
+    targets_touched: 312
+    actions: [service_create, process_exec]
+    commands: ["whoami", "tasklist"]
+    source_asset_tag: MECM-SITE-01
+    cmdb_owner: endpoint-engineering
+    maintenance_window_match: true
+    prior_30d_target_count: 312
+evidence:
+  - ioc: svc-sccm
+    kind: account
+    description: endpoint management identity, established pattern
+    must_surface: false

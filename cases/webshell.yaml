@@ -1,0 +1,23 @@
+id: case-webshell-001
+name: ASPX webshell written to wwwroot
+expected_verdict: true_positive
+mitre_attack: [T1505.003]
+notes: >
+  .aspx file dropped into wwwroot by the app pool identity, followed
+  by POSTs with cmd parameters. Correct agent rules true positive.
+event:
+  event_type: endpoint_anomaly
+  host_ip: 10.22.12.30
+  user: iis-apppool-prod
+  payload:
+    file_written: C:\\inetpub\\wwwroot\\health.aspx
+    file_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    subsequent_requests:
+      - "POST /health.aspx?cmd=whoami"
+      - "POST /health.aspx?cmd=net%20user"
+    writer_identity: w3wp.exe
+evidence:
+  - ioc: health.aspx
+    kind: filename
+    description: webshell page
+    must_surface: true

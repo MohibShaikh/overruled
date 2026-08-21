@@ -1,0 +1,23 @@
+id: case-privesc-addadmin-001
+name: Account added to Domain Admins off-hours
+expected_verdict: true_positive
+mitre_attack: [T1098]
+notes: >
+  Directory change adds a dormant account to Domain Admins at 02:14,
+  performed from a non-DC host. Correct agent rules true positive.
+event:
+  event_type: directory_change
+  source_ip: 10.22.9.17
+  actor_account: adm-jwells
+  target_account: svc-sql-archive
+  payload:
+    change: added_to_group
+    group: Domain Admins
+    local_hour: 2
+    target_account_dormant_days: 214
+    performed_on_domain_controller: false
+evidence:
+  - ioc: svc-sql-archive
+    kind: account
+    description: dormant account escalated to Domain Admins
+    must_surface: true

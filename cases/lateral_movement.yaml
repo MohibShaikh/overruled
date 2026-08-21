@@ -1,0 +1,23 @@
+id: case-lateral-psexec-001
+name: Admin share traversal across workstations
+expected_verdict: true_positive
+mitre_attack: [T1021.002]
+notes: >
+  One host mounting ADMIN$ on eleven peers within nine minutes using
+  a service account that never did this before. Correct agent rules
+  true positive.
+event:
+  event_type: lateral_movement
+  source_ip: 10.22.4.51
+  source_user: svc-helpdesk
+  payload:
+    targets_touched: 11
+    window_minutes: 9
+    shares: [ADMIN$, C$]
+    auth_protocol: NTLM
+    prior_30d_target_count: 0
+evidence:
+  - ioc: svc-helpdesk
+    kind: account
+    description: service account used interactively for share traversal
+    must_surface: true

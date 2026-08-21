@@ -1,0 +1,23 @@
+id: case-oauth-abuse-001
+name: Rogue OAuth app granted tenant-wide mail read
+expected_verdict: true_positive
+mitre_attack: [T1528]
+notes: >
+  New multi-tenant OAuth app requests Mail.ReadWrite and Reports.
+  Read.All, consented by a non-admin via phishing page. Correct agent
+  rules true positive.
+event:
+  event_type: cloud_anomaly
+  user: s.patel
+  payload:
+    app_name: "Mail Cleaner Pro"
+    app_id: 00000000-0000-0000-0000-000000000001
+    permissions: [Mail.ReadWrite, Mail.ReadBasic.All]
+    consented_by_admin: false
+    app_age_hours: 2
+    redirect_domain: mail-cleaner.example.top
+evidence:
+  - ioc: mail-cleaner.example.top
+    kind: domain
+    description: illicit consent redirect target
+    must_surface: true

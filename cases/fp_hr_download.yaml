@@ -1,0 +1,24 @@
+id: case-fp-hr-download-001
+name: HR bulk CSV downloads before payroll
+expected_verdict: false_positive
+mitre_attack: []
+notes: >
+  HR partner pulls six employee-data CSVs two days before payroll
+  cutoff. Matches her monthly pattern and role. Correct agent rules
+  false positive.
+event:
+  event_type: data_staging
+  source_ip: 10.22.4.77
+  user: t.nguyen
+  payload:
+    files_downloaded: 6
+    file_types: [.csv]
+    data_classification: employee_records
+    department_match: true
+    days_before_payroll_cutoff: 2
+    prior_3mo_same_pattern_months: 3
+evidence:
+  - ioc: t.nguyen
+    kind: account
+    description: HR role, established monthly pattern
+    must_surface: false

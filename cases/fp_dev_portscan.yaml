@@ -1,0 +1,25 @@
+id: case-fp-dev-portscan-001
+name: Internal tool probing dev subnet
+expected_verdict: false_positive
+mitre_attack: []
+notes: >
+  Sequential port checks against 60 dev hosts from the CI server.
+  Reads as recon; is the deployment health prober. Correct agent
+  rules false positive.
+event:
+  event_type: network_anomaly
+  source_ip: 10.22.1.40
+  payload:
+    targets_probed: 60
+    pattern: sequential
+    ports_touched: [8080, 8443]
+    source_asset_tag: CI-RUNNER-02
+    cmdb_owner: platform-team
+    job_name: deploy-health-check
+    schedule_match: true
+    env_scope: development_only
+evidence:
+  - ioc: 10.22.1.40
+    kind: ip
+    description: CI runner, matches deploy job roster
+    must_surface: false

@@ -1,0 +1,26 @@
+id: case-esc-insider-ambiguous-001
+name: Engineer accesses out-of-role repo and copies files
+expected_verdict: escalate
+mitre_attack: []
+notes: >
+  Backend engineer clones the payments repo he has read access to but
+  has never touched, then copies archives to a personal USB device.
+  Policy violation confirmed; theft intent unknown. Correct agent
+  escalates for human review rather than closing either way.
+event:
+  event_type: insider_anomaly
+  source_ip: 10.22.4.51
+  user: b.kowalski
+  payload:
+    repo: payments-core
+    access_level: read
+    prior_90d_touches: 0
+    usb_device_serial: 0x0900c3
+    files_copied_mb: 640
+    resignation_notice_days_ago: 30
+    exfil_to_external_network_observed: false
+evidence:
+  - ioc: "0x0900c3"
+    kind: device_id
+    description: USB serial used for local copy
+    must_surface: true

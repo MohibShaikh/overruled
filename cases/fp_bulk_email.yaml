@@ -1,0 +1,24 @@
+id: case-fp-bulk-email-001
+name: Marketing bulk send flagged as spam wave
+expected_verdict: false_positive
+mitre_attack: []
+notes: >
+  18k outbound emails in an hour from the CRM connector. Pattern
+  matches spam campaigns; is the quarterly newsletter job. Correct
+  agent rules false positive.
+event:
+  event_type: email_anomaly
+  source_ip: 10.22.1.60
+  source_user: svc-crm
+  payload:
+    emails_sent_1h: 18400
+    recipient_overlap_with_prior_sends_pct: 91
+    template_id: Q3-Newsletter-2026
+    campaign_job_match: true
+    bounce_rate_pct: 2.1
+    spam_complaint_rate_pct: 0.02
+evidence:
+  - ioc: svc-crm
+    kind: account
+    description: CRM service identity, matches campaign roster
+    must_surface: false

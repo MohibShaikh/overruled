@@ -1,0 +1,23 @@
+id: case-ransomware-staging-001
+name: Mass rename with shadow copy deletion
+expected_verdict: true_positive
+mitre_attack: [T1486, T1490]
+notes: >
+  Four thousand files renamed with a new extension in six minutes and
+  vssadmin delete shadows executed. Textbook ransomware staging.
+  Correct agent rules true positive and recommends containment.
+event:
+  event_type: endpoint_anomaly
+  host_ip: 10.22.4.51
+  user: a.silva
+  payload:
+    files_renamed: 4123
+    window_minutes: 6
+    new_extension: .locked
+    process_tree: [explorer.exe, cmd.exe, vssadmin.exe]
+    commands: ["vssadmin delete shadows /all /quiet"]
+evidence:
+  - ioc: vssadmin delete shadows /all /quiet
+    kind: command
+    description: shadow copy destruction
+    must_surface: true

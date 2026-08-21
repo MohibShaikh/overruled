@@ -1,0 +1,25 @@
+id: case-esc-exec-mailbox-rules-001
+name: Executive mailbox forwarding rule of unknown origin
+expected_verdict: escalate
+mitre_attack: [T1114.003]
+notes: >
+  New inbox rule forwards invoice mail to an external address on the
+  CFO's mailbox. Could be the EA's known automation or BEC staging;
+  the rule name matches no documented automation. Correct agent
+  escalates.
+event:
+  event_type: email_anomaly
+  user: cfo.ramirez
+  source_ip: 10.22.4.90
+  payload:
+    rule_name: "Process invoices"
+    forwards_to: billing-desk@example.top
+    created_via: outlook_web
+    creator_ip_matches_exec_usual_ips: false
+    ea_automation_documented: false
+    mailbox_contains_recent_invoice_threads: true
+evidence:
+  - ioc: billing-desk@example.top
+    kind: domain
+    description: external forwarding target, not in vendor registry
+    must_surface: true

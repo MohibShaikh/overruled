@@ -1,0 +1,24 @@
+id: case-impossible-travel-001
+name: Login from two continents in 40 minutes
+expected_verdict: true_positive
+mitre_attack: [T1078]
+notes: >
+  Successful password auth from Berlin twelve minutes after a
+  fingerprint-matched session in Austin. Correct agent rules true
+  positive.
+event:
+  event_type: login_anomaly
+  user: d.chen
+  source_ip: 203.0.113.77
+  prior_ip: 198.51.100.44
+  payload:
+    minutes_between_logins: 12
+    locations: [Austin US, Berlin DE]
+    mfa_satisfied: false
+    auth_protocol: password
+    user_agent_delta: true
+evidence:
+  - ioc: 203.0.113.77
+    kind: ip
+    description: Berlin login source
+    must_surface: true

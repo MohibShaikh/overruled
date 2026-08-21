@@ -1,0 +1,24 @@
+id: case-fp-new-domain-visit-001
+name: Visit to newly registered agency domain
+expected_verdict: false_positive
+mitre_attack: []
+notes: >
+  Workstation resolves a domain registered nine days ago. New domains
+  are a phishing marker; this one is the rebranded ad agency the
+  team just onboarded. Correct agent rules false positive.
+event:
+  event_type: network_anomaly
+  source_ip: 10.22.4.19
+  dest_domain: brightline-agency.example.com
+  payload:
+    domain_age_days: 9
+    category: marketing_agency
+    vendor_onboarded_date_days_ago: 5
+    tls_certificate_vendor_match: true
+    users_visiting: 4
+    all_users_same_department: true
+evidence:
+  - ioc: brightline-agency.example.com
+    kind: domain
+    description: onboarded vendor, certificate matches vendor record
+    must_surface: false

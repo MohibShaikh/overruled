@@ -1,0 +1,22 @@
+id: case-mfa-fatigue-001
+name: MFA push bombing then 4am approval
+expected_verdict: true_positive
+mitre_attack: [T1621]
+notes: >
+  Twenty-eight denied pushes over fifty minutes followed by one
+  approval at 04:11. Correct agent rules true positive.
+event:
+  event_type: login_anomaly
+  user: p.iyer
+  source_ip: 203.0.113.90
+  payload:
+    push_denials: 28
+    window_minutes: 50
+    approval_local_hour: 4
+    approval_source_ip: 203.0.113.90
+    post_approval_actions: [inbox_rule_created]
+evidence:
+  - ioc: 203.0.113.90
+    kind: ip
+    description: push source for denials and approval
+    must_surface: true

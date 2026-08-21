@@ -1,0 +1,24 @@
+id: case-fp-backup-access-001
+name: Backup service mass file reads
+expected_verdict: false_positive
+mitre_attack: []
+notes: >
+  Backup account reads 60k files nightly across file servers. Volume
+  looks like staging for exfiltration; is the 23:00 backup job.
+  Correct agent rules false positive.
+event:
+  event_type: data_staging
+  source_ip: 10.22.1.20
+  source_user: svc-backup
+  payload:
+    files_read: 61200
+    window: "23:00-01:30"
+    destinations: [\\\\fs01\\backup, \\\\fs02\\backup]
+    job_id: BK- Nightly-Incremental
+    schedule_match: true
+    bytes_written_to_network_share_gb: 0
+evidence:
+  - ioc: svc-backup
+    kind: account
+    description: scheduled backup identity, matches job roster
+    must_surface: false

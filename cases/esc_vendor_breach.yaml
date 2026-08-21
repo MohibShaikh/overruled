@@ -1,0 +1,25 @@
+id: case-esc-vendor-breach-001
+name: Vendor breach notice with active service account
+expected_verdict: escalate
+mitre_attack: []
+notes: >
+  SaaS vendor discloses a breach affecting customer API tokens. Our
+  logs show that vendor's integration account active overnight, which
+  is normal for sync jobs. Impact on us unproven either way. Correct
+  agent escalates for human judgment.
+event:
+  event_type: third_party_notice
+  source_user: svc-vendor-sync
+  source_ip: 198.51.100.200
+  payload:
+    vendor_name: CloudLedger
+    disclosure: api_tokens_compromised
+    our_token_rotated: false
+    service_account_active_overnight: true
+    overnight_activity_matches_sync_schedule: true
+    data_accessed_by_vendor_attacker_unknown: true
+evidence:
+  - ioc: 198.51.100.200
+    kind: ip
+    description: vendor egress, matches CMDB record
+    must_surface: false

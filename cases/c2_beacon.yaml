@@ -1,0 +1,27 @@
+id: case-c2-beacon-001
+name: Periodic C2 beacon from workstation
+expected_verdict: true_positive
+mitre_attack: [T1071.001]
+notes: >
+  Regular-interval HTTPS callbacks to a freshly registered domain.
+  Correct agent rules true positive and cites the destination.
+event:
+  event_type: network_anomaly
+  source_ip: 10.22.4.51
+  dest_ip: 203.0.113.201
+  dest_domain: cdn-metrics-sync.example.top
+  payload:
+    connection_count: 144
+    interval_seconds: 300
+    jitter_pct: 2
+    first_seen_hours_after_domain_registration: 6
+    user_agent: Mozilla/5.0 (Windows NT 10.0)
+evidence:
+  - ioc: 203.0.113.201
+    kind: ip
+    description: beacon destination
+    must_surface: true
+  - ioc: cdn-metrics-sync.example.top
+    kind: domain
+    description: newly registered beacon domain
+    must_surface: true

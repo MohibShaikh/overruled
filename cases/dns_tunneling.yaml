@@ -1,0 +1,22 @@
+id: case-dns-tunnel-001
+name: DNS tunneling via TXT record bursts
+expected_verdict: true_positive
+mitre_attack: [T1071.004]
+notes: >
+  Nine thousand high-entropy TXT queries to one subdomain in an hour
+  from a single host. Correct agent rules true positive.
+event:
+  event_type: network_anomaly
+  source_ip: 10.22.7.88
+  dest_domain: tunnel.exfil-relay.example
+  payload:
+    query_count_1h: 9210
+    record_type: TXT
+    avg_label_entropy_bits: 4.7
+    unique_subdomains: 8902
+    nxclient_ratio: 0.02
+evidence:
+  - ioc: tunnel.exfil-relay.example
+    kind: domain
+    description: tunneling domain
+    must_surface: true

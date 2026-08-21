@@ -1,0 +1,24 @@
+id: case-fp-travel-001
+name: First login from new country, device present
+expected_verdict: false_positive
+mitre_attack: []
+notes: >
+  Login from Lisbon where no prior logins exist. Both the user's
+  phone and laptop authenticate from the same hotel network an hour
+  earlier. Correct agent rules false positive.
+event:
+  event_type: login_anomaly
+  user: j.mercer
+  source_ip: 203.0.113.55
+  payload:
+    country_new_for_user: true
+    companion_device_logins_same_network_1h: 2
+    intune_compliant_device: true
+    travel_calendar_entry: "Conference - Lisbon"
+    mfa_satisfied: true
+    auth_protocol: passwordless
+evidence:
+  - ioc: 203.0.113.55
+    kind: ip
+    description: hotel network, matches companion devices
+    must_surface: false

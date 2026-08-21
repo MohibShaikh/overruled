@@ -1,0 +1,40 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: pytest -q
+
+  case-pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - name: every case parses and carries ground truth
+        run: |
+          python - <<'EOF'
+          from pathlib import Path
+          from gavel.cases import load_cases
+          cases = load_cases([Path("cases")])
+          assert len(cases) >= 30, f"case pack shrank: {len(cases)}"
+          ids = [c.id for c in cases]
+          assert len(ids) == len(set(ids)), "duplicate case ids"
+          for c in cases:
+              assert c.expected_verdict, c.id
+              assert c.event, c.id
+          print(f"{len(cases)} cases valid")
+          EOF

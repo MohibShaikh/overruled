@@ -1,0 +1,24 @@
+id: case-sqli-attempt-001
+name: SQL injection against public login endpoint
+expected_verdict: true_positive
+mitre_attack: [T1190]
+notes: >
+  Union-select and sleep() payloads from a rotating proxy range
+  against the production auth endpoint. Correct agent rules true
+  positive.
+event:
+  event_type: web_attack
+  source_ip: 203.0.113.140
+  dest_host: portal.example.com
+  payload:
+    requests_10min: 340
+    patterns_matched:
+      - "' UNION SELECT username, password FROM users--"
+      - "'; WAITFOR DELAY '0:0:5'--"
+    waf_blocked_pct: 40
+    responses_5xx: 12
+evidence:
+  - ioc: 203.0.113.140
+    kind: ip
+    description: injection source
+    must_surface: true

@@ -1,0 +1,25 @@
+id: case-esc-partial-compromise-001
+name: Valid credentials from residential proxy, mixed activity
+expected_verdict: escalate
+mitre_attack: [T1078]
+notes: >
+  Correct username and password from an ASN tied to residential proxy
+  networks. MFA satisfied via remembered device. Activity is half
+  routine, half unusual. Not enough to confirm compromise; too much
+  to close. Correct agent escalates.
+event:
+  event_type: login_anomaly
+  user: f.osei
+  source_ip: 203.0.113.171
+  payload:
+    credentials_valid: true
+    mfa_satisfied: true
+    mfa_method: remembered_device_push
+    source_asn_type: residential_proxy
+    actions_after_login: [view_payroll, search_mailbox_for_invoices, create_app_password]
+    unusual_action_ratio_pct: 40
+evidence:
+  - ioc: 203.0.113.171
+    kind: ip
+    description: residential proxy exit
+    must_surface: true
