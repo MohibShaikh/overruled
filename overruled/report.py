@@ -78,7 +78,7 @@ def _reliability_line(case) -> str:
 
 def to_markdown(card: Scorecard) -> str:
     lines = [
-        f"# Gavel scorecard: {card.subject}",
+        f"# overruled scorecard: {card.subject}",
         "",
         f"Ran {len(card.cases)} cases. "
         f"{'ALL PASSED' if card.passed else f'{card.total_failures} finding(s)'}. "
@@ -163,7 +163,7 @@ def print_card(card: Scorecard) -> None:
     from rich.table import Table
 
     console = Console()
-    table = Table(title=f"Gavel: {card.subject}", show_lines=True)
+    table = Table(title=f"overruled: {card.subject}", show_lines=True)
     table.add_column("Case")
     table.add_column("Runs", justify="right")
     table.add_column("Result")

@@ -30,6 +30,42 @@ pip install overruled
 pip install -e ".[dev]"
 ```
 
+## Try it without an agent
+
+Two mock subjects ship with the repo, so you can read a scorecard before
+wiring up anything real. The broken one closes every alert as benign,
+which is the failure mode nobody catches in production:
+
+```
+python -m mocks --agent broken --port 9102
+overruled run cases/ --adapter json --url http://127.0.0.1:9102 --runs 1
+```
+
+```
+SUBJECT FAILS (62 finding(s))
+Verdict accuracy 21/50 (42%, 95% CI 29%-56%), kappa 0.00 (poor),
+expected loss 880.0 units/100 alerts (FN weight 20:1, 22 missed threats,
+0 false alarms)
+```
+
+42% from an agent that investigates nothing. A pack with this much benign
+traffic hands that out for free, which is why accuracy alone proves
+nothing. Kappa 0.00 is the tell: agreement no better than chance.
+
+The reference mock is rule-based and cites the indicators it finds. It
+passes the cases it was written against:
+
+```
+python -m mocks --agent reference --port 9101
+overruled run cases/brute_force.yaml cases/case-pth-lateral.yaml \
+  cases/case-fp-cert-window.yaml cases/case-esc-exit-delete.yaml \
+  --adapter json --url http://127.0.0.1:9101 --runs 2
+```
+
+Both mocks back the differential self-test in CI: overruled must pass the
+reference and convict the broken one on the same cases, or overruled
+itself is not measuring anything.
+
 ## Use
 
 Audit a subject agent:
@@ -37,6 +73,11 @@ Audit a subject agent:
 ```
 overruled run cases/ --url https://agent.example.com --token "$TOKEN" --runs 3
 ```
+
+`--adapter` picks the subject contract. The default `threatsentinel`
+speaks that REST shape; `--adapter json` POSTs `{"event_data": event}`
+and reads back `{"verdict", "cited_iocs", "confidence"}`. Anything else
+needs a `SubjectAdapter` subclass, which is about thirty lines.
 
 Gate a pipeline (JUnit for CI dashboards):
 
@@ -58,6 +99,10 @@ overruled compare cases/ \
   --subject candidate=https://b.example.com
 ```
 
+Per-case PASS/FAIL for each subject, plus an exact McNemar test on the
+discordant cases so a two-point lead does not get mistaken for a better
+agent.
+
 ## Checks
 
 | Rule | Check | Severity | Question |
@@ -78,9 +123,9 @@ The statistics are established estimators, not invented heuristics:
 - **pass^k reliability** (tau-bench, Yao et al. 2024) bounds per-case
   reliability across repeated runs. An agent that is right 90% of single
   runs still fails a three-run gate about a quarter of the time.
-- **Exact McNemar test** (McNemar 1947)   beats another, overruled reports whether the difference is significant at
-  beats another, overruled reports whether the difference is significant at
-  0.05 or procurement noise.
+- **Exact McNemar test** (McNemar 1947) on paired case outcomes. When one
+  agent beats another, overruled reports whether the difference is
+  significant at 0.05 or procurement noise.
 - **Cohen's kappa** (1960): chance-corrected agreement. An agent that
   always answers the majority class looks accurate by luck; kappa does not
   let it. Below 0.6 overruled labels agreement poor.
