@@ -1,6 +1,10 @@
+<img src="assets/logo.svg" alt="" width="88" align="left">
+
 # overruled
 
 Verdicts are claims. We overrule the wrong ones.
+
+<br clear="left">
 
 AI agents now close security alerts autonomously. When one closes an alert,
 two questions go unanswered: was the close correct, and is the agent inventing

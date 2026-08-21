@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="overruled">
+  <title>overruled</title>
+  <rect x="16" y="16" width="96" height="96" rx="10" fill="none" stroke="currentColor" stroke-width="11"/>
+  <path d="M39 66 L57 84 L91 46" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="square"/>
+  <path d="M10 94 L118 40" fill="none" stroke="currentColor" stroke-width="12"/>
+</svg>

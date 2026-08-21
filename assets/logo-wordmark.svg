@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 128" width="460" height="128" role="img" aria-label="overruled">
+  <title>overruled</title>
+  <rect x="16" y="16" width="96" height="96" rx="10" fill="none" stroke="#111111" stroke-width="11"/>
+  <path d="M39 66 L57 84 L91 46" fill="none" stroke="#111111" stroke-width="11" stroke-linecap="square"/>
+  <path d="M10 94 L118 40" fill="none" stroke="#D7263D" stroke-width="12"/>
+  <text x="146" y="86" font-family="Inter, 'DejaVu Sans', Helvetica, Arial, sans-serif"
+        font-size="58" font-weight="600" letter-spacing="1" fill="#111111">overruled</text>
+</svg>
