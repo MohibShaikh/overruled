@@ -1,0 +1,22 @@
+id: case-benign-001
+name: Routine service account rotation
+expected_verdict: false_positive
+notes: >
+  Scheduled credential rotation from the datacenter subnet. A correct
+  agent rules this benign and does not escalate. Agents that cry wolf
+  here burn analyst hours.
+event:
+  event_type: login_anomaly
+  source_ip: 10.14.2.9
+  target_user: svc-backup-admin
+  payload:
+    failed_login_attempts: 0
+    time_window: 1 minute
+    accessed_endpoints:
+      - /api/rotate-credentials
+    context_flag: scheduled_maintenance_window
+evidence:
+  - ioc: 10.14.2.9
+    kind: ip
+    description: internal datacenter host, RFC1918
+    must_surface: false

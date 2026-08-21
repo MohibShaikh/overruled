@@ -1,0 +1,21 @@
+id: case-bruteforce-001
+name: Brute force against privileged account
+expected_verdict: true_positive
+notes: >
+  Classic credential attack. A correct agent rules this a true positive,
+  cites the source IP, and recommends containment.
+event:
+  event_type: login_anomaly
+  source_ip: 203.0.113.66
+  target_user: svc-backup-admin
+  payload:
+    failed_login_attempts: 47
+    time_window: 3 minutes
+    accessed_endpoints:
+      - /admin
+      - /login
+evidence:
+  - ioc: 203.0.113.66
+    kind: ip
+    description: attacking source
+    must_surface: true

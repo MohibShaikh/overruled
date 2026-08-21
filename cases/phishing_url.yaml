@@ -1,0 +1,25 @@
+id: case-phishing-001
+name: Credential phishing page
+expected_verdict: true_positive
+notes: >
+  Lookalike domain hosting a login form. A correct agent rules this a
+  true positive and cites the domain.
+event:
+  event_type: suspicious_url
+  url: https://secure-login.example-phish.top/verify
+  source_ip: 198.51.100.23
+  user: j.reed
+  payload:
+    referrer: mail
+    form_fields:
+      - username
+      - password
+evidence:
+  - ioc: secure-login.example-phish.top
+    kind: domain
+    description: lookalike phishing domain
+    must_surface: true
+  - ioc: 198.51.100.23
+    kind: ip
+    description: hosting infrastructure
+    must_surface: false
