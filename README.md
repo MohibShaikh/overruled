@@ -14,10 +14,12 @@ deployments like any other CI step.
 
 ## Why
 
-Top LLMs score 61-67% on autonomous triage benchmarks. A third of verdicts
-wrong, and nobody measures which third until after the breach. Gartner: 70%
-of SOCs will pilot AI agents, 15% will see results. The gap between piloting
-and trusting is unmeasured verdict quality. overruled is the measurement.
+The strongest published baseline for an autonomous incident response agent
+is SIR-Bench's own: 97.1% true-positive detection and 73.4% false-positive
+rejection (arXiv 2604.12040). That is a purpose-built agent, measured by the
+team that wrote the benchmark, still misjudging roughly one benign alert in
+four. Whatever your vendor's agent scores, your vendor scored it. overruled
+is the second opinion.
 
 ## Install
 
@@ -32,13 +34,13 @@ pip install -e ".[dev]"
 
 ## Try it without an agent
 
-Two mock subjects ship with the repo, so you can read a scorecard before
-wiring up anything real. The broken one closes every alert as benign,
+Two mock subjects ship inside the package, so a fresh `pip install` can
+produce a scorecard before you wire up anything real. The broken one closes every alert as benign,
 which is the failure mode nobody catches in production:
 
 ```
-python -m mocks --agent broken --port 9102
-overruled run cases/ --adapter json --url http://127.0.0.1:9102 --runs 1
+python -m overruled.mocks --agent broken --port 9102
+overruled run --adapter json --url http://127.0.0.1:9102 --runs 1
 ```
 
 ```
@@ -56,9 +58,11 @@ The reference mock is rule-based and cites the indicators it finds. It
 passes the cases it was written against:
 
 ```
-python -m mocks --agent reference --port 9101
-overruled run cases/brute_force.yaml cases/case-pth-lateral.yaml \
-  cases/case-fp-cert-window.yaml cases/case-esc-exit-delete.yaml \
+python -m overruled.mocks --agent reference --port 9101
+overruled run overruled/cases/brute_force.yaml \
+  overruled/cases/case-pth-lateral.yaml \
+  overruled/cases/case-fp-cert-window.yaml \
+  overruled/cases/case-esc-exit-delete.yaml \
   --adapter json --url http://127.0.0.1:9101 --runs 2
 ```
 
@@ -68,10 +72,13 @@ itself is not measuring anything.
 
 ## Use
 
+The 50-case pack ships with the package, so every command below runs
+against it by default. Pass paths to audit your own cases instead.
+
 Audit a subject agent:
 
 ```
-overruled run cases/ --url https://agent.example.com --token "$TOKEN" --runs 3
+overruled run --url https://agent.example.com --token "$TOKEN" --runs 3
 ```
 
 `--adapter` picks the subject contract. The default `threatsentinel`
@@ -82,19 +89,19 @@ needs a `SubjectAdapter` subclass, which is about thirty lines.
 Gate a pipeline (JUnit for CI dashboards):
 
 ```
-overruled run cases/ --url "$AGENT_URL" --format junit --out overruled.xml
+overruled run --url "$AGENT_URL" --format junit --out overruled.xml
 ```
 
 Findings into existing dashboards (SARIF):
 
 ```
-overruled run cases/ --url "$AGENT_URL" --format sarif --out overruled.sarif
+overruled run --url "$AGENT_URL" --format sarif --out overruled.sarif
 ```
 
 Compare two vendors on the same case pack before you sign either contract:
 
 ```
-overruled compare cases/ \
+overruled compare \
   --subject incumbent=https://a.example.com \
   --subject candidate=https://b.example.com
 ```
@@ -175,7 +182,7 @@ Stated plainly, because an auditor that asks for trust has already failed.
   vocabulary. Agents with exotic taxonomies need adapter work.
 - Fabrication detection is only as good as adapter visibility. An agent that
   hides its tool calls can only be warned about, not convicted.
-- Case quality bounds audit quality. Ground truth in `cases/` reflects the
+- Case quality bounds audit quality. Ground truth in `overruled/cases/` reflects the
   judgment of whoever wrote them; contest it in a pull request, not in a
   breach postmortem.
 - Consistency checking sends each case N times. Budget for that load.
@@ -201,8 +208,9 @@ evidence:
     must_surface: true
 ```
 
-The case library is the product. Contribute scenarios from your own redacted
-alerts; contested ground truth belongs in pull requests.
+Cases live in `overruled/cases/` and ship with the package. The case
+library is the product. Contribute scenarios from your own redacted alerts;
+contested ground truth belongs in pull requests.
 
 ## License
 

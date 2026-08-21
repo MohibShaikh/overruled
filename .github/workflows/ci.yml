@@ -31,9 +31,8 @@ jobs:
       - name: every case parses and carries ground truth
         run: |
           python - <<'EOF'
-          from pathlib import Path
-          from overruled.cases import load_cases
-          cases = load_cases([Path("cases")])
+          from overruled.cases import bundled_cases
+          cases = bundled_cases()
           assert len(cases) >= 50, f"case pack shrank: {len(cases)}"
           ids = [c.id for c in cases]
           assert len(ids) == len(set(ids)), "duplicate case ids"

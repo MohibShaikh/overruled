@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from .auditor import Auditor
-from .cases import load_cases
+from .cases import BUNDLED_CASES, load_cases
 from .report import print_card, to_junit, to_markdown, to_sarif
 from .subject import JSONAdapter, ThreatSentinelAdapter
 
@@ -31,7 +31,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     run_p = sub.add_parser("run", help="audit one subject agent against cases")
-    run_p.add_argument("cases", nargs="+", type=Path, help="case files or directories")
+    run_p.add_argument("cases", nargs="*", type=Path,
+                       help="case files or directories (default: the bundled pack)")
     run_p.add_argument("--url", default="http://localhost:8000", help="subject agent base URL")
     run_p.add_argument("--token", default="dev-secret-key", help="bearer token for the subject")
     run_p.add_argument("--adapter", choices=tuple(_ADAPTERS), default="threatsentinel",
@@ -43,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument("--out", type=Path, help="write report to file instead of stdout")
 
     cmp_p = sub.add_parser("compare", help="audit several subjects on the same cases")
-    cmp_p.add_argument("cases", nargs="+", type=Path)
+    cmp_p.add_argument("cases", nargs="*", type=Path)
     cmp_p.add_argument("--subject", dest="subjects", action="append", type=_subject,
                        required=True, metavar="NAME=URL")
     cmp_p.add_argument("--token", default="dev-secret-key")
@@ -60,8 +61,12 @@ def main(argv: list[str] | None = None) -> int:
     return 2
 
 
+def _case_paths(args) -> list[Path]:
+    return list(args.cases) or [BUNDLED_CASES]
+
+
 async def _run(args) -> int:
-    cases = load_cases(list(args.cases))
+    cases = load_cases(_case_paths(args))
     subject = _ADAPTERS[args.adapter](args.url, args.token)
     card = await Auditor(subject, runs_per_case=args.runs, adaptive=args.adaptive).run(cases)
     _emit(card, args.format, args.out)
@@ -74,7 +79,7 @@ async def _compare(args) -> int:
 
     from .stats import mcnemar_exact
 
-    cases = load_cases(list(args.cases))
+    cases = load_cases(_case_paths(args))
     subjects = [(name, _ADAPTERS[args.adapter](url, args.token))
                 for name, url in args.subjects]
     console = Console()

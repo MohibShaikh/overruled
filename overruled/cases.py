@@ -7,6 +7,17 @@ import yaml
 
 from .models import Case
 
+BUNDLED_CASES = Path(__file__).parent / "cases"
+
+
+def bundled_cases() -> list[Case]:
+    """The case pack that ships with the package.
+
+    Installing overruled has to give you something to audit against, or
+    every command in the docs needs a git clone first.
+    """
+    return load_cases([BUNDLED_CASES])
+
 
 def load_case(path: Path) -> Case:
     with open(path) as f:

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from overruled.cases import load_cases
+from overruled.cases import bundled_cases, load_cases
 from overruled.checks.consistency import ConsistencyCheck
 from overruled.checks.evidence import FabricatedEvidenceCheck, MissedEvidenceCheck
 from overruled.checks.verdict import VerdictCheck
@@ -125,7 +125,7 @@ class TestConsistencyCheck:
 
 class TestCaseLoading:
     def test_loads_seed_cases(self):
-        cases = load_cases([Path(__file__).parent.parent / "cases"])
+        cases = bundled_cases()
         ids = {c.id for c in cases}
         assert {"case-bruteforce-001", "case-benign-001", "case-phishing-001"} <= ids
 

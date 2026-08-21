@@ -1,6 +1,6 @@
 [project]
 name = "overruled"
-version = "0.1.0"
+version = "0.1.1"
 description = "The verdict auditor for AI SOC agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -25,6 +25,9 @@ overruled = "overruled.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["overruled*"]
+
+[tool.setuptools.package-data]
+overruled = ["cases/*.yaml", "cases/*.yml"]
 
 [project.optional-dependencies]
 dev = [

@@ -4,9 +4,9 @@ detect a deliberately wrong subject is measuring nothing."""
 
 import pytest
 
-from mocks import BrokenAgent, ReferenceAgent, serve
 from overruled.auditor import Auditor
-from overruled.cases import load_cases
+from overruled.cases import bundled_cases
+from overruled.mocks import BrokenAgent, ReferenceAgent, serve
 from overruled.subject import JSONAdapter
 
 SELF_TEST_CASES = [
@@ -32,8 +32,7 @@ def broken_url():
 
 
 def _cases():
-    all_cases = load_cases([__import__("pathlib").Path("cases")])
-    by_id = {c.id: c for c in all_cases}
+    by_id = {c.id: c for c in bundled_cases()}
     return [by_id[cid] for cid in SELF_TEST_CASES]
 
 
