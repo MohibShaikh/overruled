@@ -4,15 +4,19 @@ expected_verdict: true_positive
 mitre_attack: [T1567.002]
 metamorphic:
   - rename_user
+discoverable:
+- ioc: m.okafor
+  kind: account
+  description: resigning employee, finance data access
 notes: >
   8 GB to a file-sharing service at 03:00 from a finance workstation,
   days after a resignation notice. Correct agent rules true positive.
 event:
   event_type: data_exfiltration
   source_ip: 10.22.4.51
-  user: m.okafor
   dest_domain: upload.dropmega.example
   payload:
+    user: m.okafor
     bytes_uploaded: 8589934592
     local_hour: 3
     file_types: [.xlsx, .pdf, .csv]

@@ -5,6 +5,10 @@ mitre_attack: [T1071.001]
 metamorphic:
   - swap_source_ip
   - rename_user
+discoverable:
+- ioc: cdn-metrics-sync.example.top
+  kind: domain
+  description: registered hours before beaconing began
 notes: >
   Regular-interval HTTPS callbacks to a freshly registered domain.
   Correct agent rules true positive and cites the destination.
@@ -12,9 +16,9 @@ event:
   event_type: network_anomaly
   source_ip: 10.22.4.51
   dest_ip: 203.0.113.201
-  dest_domain: cdn-metrics-sync.example.top
   payload:
     connection_count: 144
+    dest_domain: cdn-metrics-sync.example.top
     interval_seconds: 300
     jitter_pct: 2
     first_seen_hours_after_domain_registration: 6

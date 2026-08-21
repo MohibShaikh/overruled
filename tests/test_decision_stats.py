@@ -2,6 +2,9 @@
 
 import pytest
 
+from gavel.checks.parroting import AlertParrotingCheck
+from gavel.metamorphic import TRANSFORMS, reformat_numbers, reorder_payload
+from gavel.models import AgentArtifact, Case, EvidenceItem, Severity
 from gavel.stats import brier_score, cohens_kappa, expected_loss, sprt_decide
 
 
@@ -73,3 +76,110 @@ class TestSPRT:
     def test_negative_trials_raises(self):
         with pytest.raises(ValueError):
             sprt_decide(0, -1)
+
+
+class TestAlertParroting:
+    def _case(self, discoverable=None):
+        return Case(
+            id="t", name="t", event={"source_ip": "1.2.3.4"},
+            expected_verdict="true_positive",
+            evidence=[EvidenceItem(ioc="1.2.3.4", kind="ip")],
+            discoverable=discoverable or [],
+        )
+
+    def _artifact(self, verdict="true_positive", cited=("1.2.3.4",)):
+        return AgentArtifact(
+            verdict=verdict, summary="", cited_iocs=list(cited),
+        )
+
+    def test_unjustified_tp_is_critical(self):
+        result = AlertParrotingCheck().run(self._case(), [self._artifact(cited=())])
+        assert not result.passed
+        assert result.severity == Severity.CRITICAL
+
+    def test_cited_tp_passes(self):
+        result = AlertParrotingCheck().run(self._case(), [self._artifact()])
+        assert result.passed
+
+    def test_fp_verdict_needs_no_evidence(self):
+        case = self._case()
+        case.expected_verdict = "false_positive"
+        artifact = AgentArtifact(verdict="false_positive", summary="", cited_iocs=[])
+        result = AlertParrotingCheck().run(case, [artifact])
+        assert result.passed
+
+    def test_missed_discovery_is_major(self):
+        disc = EvidenceItem(ioc="svc-backup-admin", kind="account")
+        result = AlertParrotingCheck().run(
+            self._case(discoverable=[disc]), [self._artifact()],
+        )
+        assert not result.passed
+        assert result.severity == Severity.MAJOR
+
+    def test_discovery_surfaced_passes(self):
+        disc = EvidenceItem(ioc="svc-backup-admin", kind="account")
+        artifact = AgentArtifact(
+            verdict="true_positive", summary="",
+            cited_iocs=["1.2.3.4", "svc-backup-admin"],
+        )
+        result = AlertParrotingCheck().run(
+            self._case(discoverable=[disc]), [artifact],
+        )
+        assert result.passed
+
+    def test_no_discoverable_declared_passes_clean(self):
+        result = AlertParrotingCheck().run(self._case(), [self._artifact()])
+        assert "investigation depth credited" in result.detail
+
+
+class TestFormatTransforms:
+    def test_reorder_payload_reverses_keys(self):
+        event = {"payload": {"a": 1, "b": 2, "c": 3}}
+        out = reorder_payload(event)
+        assert list(out["payload"]) == ["c", "b", "a"]
+        assert out["payload"]["a"] == 1
+        assert list(event["payload"]) == ["a", "b", "c"]
+
+    def test_reformat_numbers_adds_separators(self):
+        event = {"payload": {"count": 5000, "small": 42, "flag": True}}
+        out = reformat_numbers(event)
+        assert out["payload"]["count"] == "5,000"
+        assert out["payload"]["small"] == 42
+        assert out["payload"]["flag"] is True
+
+    def test_transforms_registered(self):
+        for name in ("reorder_payload", "reformat_numbers"):
+            assert name in TRANSFORMS
+
+
+class TestDiscoverableValidation:
+    def _write(self, tmp_path, event, disc="svc-x"):
+        case = f"""
+id: t1
+name: t
+expected_verdict: true_positive
+discoverable:
+- ioc: {disc}
+  kind: account
+event: {event}
+"""
+        p = tmp_path / "t.yaml"
+        p.write_text(case)
+        return p
+
+    def test_headline_discoverable_rejected(self, tmp_path):
+        from gavel.cases import load_case
+        p = self._write(tmp_path, {"user": "svc-x", "payload": {"n": 1}})
+        with pytest.raises(ValueError, match="headline"):
+            load_case(p)
+
+    def test_nested_discoverable_accepted(self, tmp_path):
+        from gavel.cases import load_case
+        p = self._write(tmp_path, {"source_ip": "1.2.3.4", "payload": {"user": "svc-x"}})
+        assert load_case(p).discoverable[0].ioc == "svc-x"
+
+    def test_ungrounded_discoverable_rejected(self, tmp_path):
+        from gavel.cases import load_case
+        p = self._write(tmp_path, {"source_ip": "1.2.3.4", "payload": {"n": 1}})
+        with pytest.raises(ValueError, match="not grounded"):
+            load_case(p)

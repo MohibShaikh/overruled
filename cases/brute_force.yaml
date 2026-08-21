@@ -1,8 +1,10 @@
 id: case-bruteforce-001
 name: Brute force against privileged account
 expected_verdict: true_positive
-metamorphic:
-  - rename_user
+discoverable:
+- ioc: /admin
+  kind: endpoint
+  description: attack reached admin endpoints, escalation risk
 notes: >
   Classic credential attack. A correct agent rules this a true positive,
   cites the source IP, and recommends containment.

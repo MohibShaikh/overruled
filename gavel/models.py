@@ -42,6 +42,7 @@ class Case(BaseModel):
     event: dict[str, Any]
     expected_verdict: ExpectedVerdict
     evidence: list[EvidenceItem] = Field(default_factory=list)
+    discoverable: list[EvidenceItem] = Field(default_factory=list)
     mitre_attack: list[str] = Field(default_factory=list)
     metamorphic: list[str] = Field(default_factory=list)
     notes: str = ""

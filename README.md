@@ -61,6 +61,7 @@ gavel compare cases/ \
 | GV-003 | missed_evidence | major | Did it surface the planted indicators a competent investigator would find? |
 | GV-004 | consistency | major | Same case, N runs, same ruling? |
 | GV-005 | metamorphic_invariance | major | Does the ruling survive a cosmetic change that preserves ground truth? |
+| GV-006 | alert_parroting | critical/major | Did a TP ruling cite any evidence at all? Did the agent surface facts buried in payload context, or only restate the alert headline? |
 
 ## Methods
 
@@ -90,6 +91,13 @@ The statistics are established estimators, not invented heuristics:
 - **Metamorphic testing** (Chen et al.): cases declare which cosmetic
   transforms preserve their ground truth (`metamorphic: [rename_user]`).
   A flipped verdict means the agent pattern-matched surface features.
+- **Alert parroting detection** (SIR-Bench, arXiv 2604.12040): burden of
+  proof inverted. A true-positive ruling with zero cited evidence is
+  flagged no matter how right it looks, and cases can declare facts that
+  sit nested in payload context; an agent that never surfaces them is
+  restating the alert headline, not investigating. Where SIR-Bench needs
+  ROUGE plus an LLM judge, gavel cases are authored so exact matching
+  keeps the grading path model-free.
 
 No LLM participates in any check. Same inputs, same findings, every run.
 

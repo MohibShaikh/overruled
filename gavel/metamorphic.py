@@ -83,10 +83,35 @@ def _replace_url_hosts(node) -> None:
             _replace_url_hosts(item)
 
 
+def reorder_payload(event: dict) -> dict:
+    """Reverse payload key order; semantics identical, surface differs.
+
+    From Safetility (Litvak 2026): deployability requires verdicts that
+    survive benign formatting changes.
+    """
+    out = _deep_copy(event)
+    if isinstance(out.get("payload"), dict):
+        out["payload"] = dict(reversed(list(out["payload"].items())))
+    return out
+
+
+def reformat_numbers(event: dict) -> dict:
+    """Render integer counts with thousands separators as strings."""
+    out = _deep_copy(event)
+    payload = out.get("payload")
+    if isinstance(payload, dict):
+        for key, val in list(payload.items()):
+            if isinstance(val, int) and not isinstance(val, bool) and val >= 1000:
+                payload[key] = f"{val:,}"
+    return out
+
+
 TRANSFORMS = {
     "swap_source_ip": swap_source_ip,
     "rename_user": rename_user,
     "rebrand_domain": rebrand_domain,
+    "reorder_payload": reorder_payload,
+    "reformat_numbers": reformat_numbers,
 }
 
 

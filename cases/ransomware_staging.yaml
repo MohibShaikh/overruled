@@ -2,6 +2,10 @@ id: case-ransomware-staging-001
 name: Mass rename with shadow copy deletion
 expected_verdict: true_positive
 mitre_attack: [T1486, T1490]
+discoverable:
+- ioc: a.silva
+  kind: account
+  description: interactive user context for mass rename
 notes: >
   Four thousand files renamed with a new extension in six minutes and
   vssadmin delete shadows executed. Textbook ransomware staging.
@@ -9,8 +13,8 @@ notes: >
 event:
   event_type: endpoint_anomaly
   host_ip: 10.22.4.51
-  user: a.silva
   payload:
+    user: a.silva
     files_renamed: 4123
     window_minutes: 6
     new_extension: .locked
