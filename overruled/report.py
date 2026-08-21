@@ -127,8 +127,8 @@ def to_sarif(card: Scorecard) -> str:
         "version": "2.1.0",
         "runs": [{
             "tool": {"driver": {
-                "name": "gavel",
-                "informationUri": "https://github.com/gavel-audit/gavel",
+                "name": "overruled",
+                "informationUri": "https://github.com/MohibShaikh/overruled",
                 "rules": list(rules.values()),
             }},
             "results": results,
@@ -138,9 +138,9 @@ def to_sarif(card: Scorecard) -> str:
 
 
 def to_junit(card: Scorecard) -> str:
-    """JUnit XML so any CI system can gate on gavel natively."""
+    """JUnit XML so any CI system can gate on overruled natively."""
     suite = Element("testsuite", {
-        "name": f"gavel:{card.subject}",
+        "name": f"overruled:{card.subject}",
         "tests": str(len(card.cases)),
         "failures": str(sum(1 for c in card.cases if not c.passed)),
     })

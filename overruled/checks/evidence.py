@@ -18,7 +18,7 @@ _TOKEN_PATTERNS = [
 
 class FabricatedEvidenceCheck:
     check = "fabricated_evidence"
-    rule_id = "GV-002"
+    rule_id = "OV-002"
 
     def run(self, case: Case, artifacts: list[AgentArtifact]) -> CheckResult:
         known = self._known_tokens(case)
@@ -79,7 +79,7 @@ def _tokens_in(text: str) -> list[str]:
 
 class MissedEvidenceCheck:
     check = "missed_evidence"
-    rule_id = "GV-003"
+    rule_id = "OV-003"
 
     def run(self, case: Case, artifacts: list[AgentArtifact]) -> CheckResult:
         must_surface = [e for e in case.evidence if e.must_surface]

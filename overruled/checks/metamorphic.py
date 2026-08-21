@@ -1,4 +1,4 @@
-"""GV-005: metamorphic invariance.
+"""OV-005: metamorphic invariance.
 
 A verdict that flips under a relation-preserving transform of the
 event is anchored to surface features. Declared per case because only
@@ -11,7 +11,7 @@ from ..models import AgentArtifact, Case, CheckResult, Severity
 
 class MetamorphicCheck:
     check = "metamorphic_invariance"
-    rule_id = "GV-005"
+    rule_id = "OV-005"
 
     def run(
         self,

@@ -34,7 +34,7 @@ class Case(BaseModel):
 
     `event` is what gets fed to the subject agent. `evidence` lists the
     facts a competent investigation should find. `expected_verdict` is
-    the ruling gavel grades against.
+    the ruling overruled grades against.
     """
 
     id: str

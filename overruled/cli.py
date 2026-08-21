@@ -1,4 +1,4 @@
-"""CLI entrypoint for gavel."""
+"""CLI entrypoint for overruled."""
 
 import argparse
 import asyncio
@@ -22,7 +22,7 @@ def _subject(spec: str) -> tuple[str, SubjectAdapter]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="gavel",
+        prog="overruled",
         description="The verdict auditor for AI SOC agents",
     )
     sub = parser.add_subparsers(dest="command", required=True)

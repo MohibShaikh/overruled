@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from gavel.cases import load_cases
-from gavel.checks.consistency import ConsistencyCheck
-from gavel.checks.evidence import FabricatedEvidenceCheck, MissedEvidenceCheck
-from gavel.checks.verdict import VerdictCheck
-from gavel.models import (
+from overruled.cases import load_cases
+from overruled.checks.consistency import ConsistencyCheck
+from overruled.checks.evidence import FabricatedEvidenceCheck, MissedEvidenceCheck
+from overruled.checks.verdict import VerdictCheck
+from overruled.models import (
     AgentArtifact,
     Case,
     EvidenceItem,
@@ -40,7 +40,7 @@ class TestVerdictCheck:
         ]
         result = VerdictCheck().run(make_case(), artifacts)
         assert not result.passed
-        assert result.rule_id == "GV-001"
+        assert result.rule_id == "OV-001"
         assert result.severity.value == "critical"
 
 
@@ -76,7 +76,7 @@ class TestMissedEvidenceCheck:
     def test_fails_when_mandatory_evidence_unsurfaced(self):
         result = MissedEvidenceCheck().run(make_case(), [AgentArtifact(cited_iocs=[])])
         assert not result.passed
-        assert result.rule_id == "GV-003"
+        assert result.rule_id == "OV-003"
 
     def test_ignores_optional_evidence(self):
         case = make_case(evidence=[EvidenceItem(ioc="10.0.0.1", must_surface=False)])
@@ -92,7 +92,7 @@ class TestConsistencyCheck:
         ]
         result = ConsistencyCheck().run(make_case(), artifacts)
         assert not result.passed
-        assert result.rule_id == "GV-004"
+        assert result.rule_id == "OV-004"
 
     def test_single_run_not_applicable(self):
         result = ConsistencyCheck().run(make_case(), [AgentArtifact(verdict="tp")])

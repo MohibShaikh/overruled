@@ -1,5 +1,5 @@
 [project]
-name = "gavel-audit"
+name = "overruled"
 version = "0.1.0"
 description = "The verdict auditor for AI SOC agents"
 readme = "README.md"
@@ -21,10 +21,10 @@ dependencies = [
 ]
 
 [project.scripts]
-gavel = "gavel.cli:main"
+overruled = "overruled.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["gavel*"]
+include = ["overruled*"]
 
 [project.optional-dependencies]
 dev = [

@@ -28,7 +28,7 @@ jobs:
         run: |
           python - <<'EOF'
           from pathlib import Path
-          from gavel.cases import load_cases
+          from overruled.cases import load_cases
           cases = load_cases([Path("cases")])
           assert len(cases) >= 30, f"case pack shrank: {len(cases)}"
           ids = [c.id for c in cases]

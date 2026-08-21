@@ -1,10 +1,11 @@
-# gavel
+# overruled
 
-The verdict auditor for AI SOC agents.
+Verdicts are claims. We overrule the wrong ones.
 
 AI agents now close security alerts autonomously. When one closes an alert,
 two questions go unanswered: was the close correct, and is the agent inventing
-its reasoning. Vendors grade themselves. gavel grades them for you.
+its reasoning. Vendors grade themselves. overruled grades them for you, then
+returns its own ruling: SUBJECT PASSES or SUBJECT OVERRULED.
 
 It replays cases with known ground truth against any agent that speaks HTTP,
 then checks the agent's verdicts for correctness, evidence fabrication, missed
@@ -16,15 +17,14 @@ deployments like any other CI step.
 Top LLMs score 61-67% on autonomous triage benchmarks. A third of verdicts
 wrong, and nobody measures which third until after the breach. Gartner: 70%
 of SOCs will pilot AI agents, 15% will see results. The gap between piloting
-and trusting is unmeasured verdict quality. gavel is the measurement.
+and trusting is unmeasured verdict quality. overruled is the measurement.
 
 ## Install
 
 ```
-pip install gavel-audit
+pip install overruled
 ```
-
-The distribution is `gavel-audit`; the command is `gavel`. For development:
+ For development:
 
 ```
 pip install -e ".[dev]"
@@ -35,25 +35,25 @@ pip install -e ".[dev]"
 Audit a subject agent:
 
 ```
-gavel run cases/ --url https://agent.example.com --token "$TOKEN" --runs 3
+overruled run cases/ --url https://agent.example.com --token "$TOKEN" --runs 3
 ```
 
 Gate a pipeline (JUnit for CI dashboards):
 
 ```
-gavel run cases/ --url "$AGENT_URL" --format junit --out gavel.xml
+overruled run cases/ --url "$AGENT_URL" --format junit --out overruled.xml
 ```
 
 Findings into existing dashboards (SARIF):
 
 ```
-gavel run cases/ --url "$AGENT_URL" --format sarif --out gavel.sarif
+overruled run cases/ --url "$AGENT_URL" --format sarif --out overruled.sarif
 ```
 
 Compare two vendors on the same case pack before you sign either contract:
 
 ```
-gavel compare cases/ \
+overruled compare cases/ \
   --subject incumbent=https://a.example.com \
   --subject candidate=https://b.example.com
 ```
@@ -62,12 +62,12 @@ gavel compare cases/ \
 
 | Rule | Check | Severity | Question |
 |---|---|---|---|
-| GV-001 | verdict | critical | Did the agent rule what ground truth says is correct? |
-| GV-002 | fabricated_evidence | critical | Are cited indicators real facts from the case or observed enrichment? |
-| GV-003 | missed_evidence | major | Did it surface the planted indicators a competent investigator would find? |
-| GV-004 | consistency | major | Same case, N runs, same ruling? |
-| GV-005 | metamorphic_invariance | major | Does the ruling survive a cosmetic change that preserves ground truth? |
-| GV-006 | alert_parroting | critical/major | Did a TP ruling cite any evidence at all? Did the agent surface facts buried in payload context, or only restate the alert headline? |
+| OV-001 | verdict | critical | Did the agent rule what ground truth says is correct? |
+| OV-002 | fabricated_evidence | critical | Are cited indicators real facts from the case or observed enrichment? |
+| OV-003 | missed_evidence | major | Did it surface the planted indicators a competent investigator would find? |
+| OV-004 | consistency | major | Same case, N runs, same ruling? |
+| OV-005 | metamorphic_invariance | major | Does the ruling survive a cosmetic change that preserves ground truth? |
+| OV-006 | alert_parroting | critical/major | Did a TP ruling cite any evidence at all? Did the agent surface facts buried in payload context, or only restate the alert headline? |
 
 ## Methods
 
@@ -78,12 +78,12 @@ The statistics are established estimators, not invented heuristics:
 - **pass^k reliability** (tau-bench, Yao et al. 2024) bounds per-case
   reliability across repeated runs. An agent that is right 90% of single
   runs still fails a three-run gate about a quarter of the time.
-- **Exact McNemar test** (McNemar 1947) in `gavel compare`. When one vendor
-  beats another, gavel reports whether the difference is significant at
+- **Exact McNemar test** (McNemar 1947)   beats another, overruled reports whether the difference is significant at
+  beats another, overruled reports whether the difference is significant at
   0.05 or procurement noise.
 - **Cohen's kappa** (1960): chance-corrected agreement. An agent that
   always answers the majority class looks accurate by luck; kappa does not
-  let it. Below 0.6 gavel labels agreement poor.
+  let it. Below 0.6 overruled labels agreement poor.
 - **Brier score** (1950) on stated confidence: mean squared error between
   how sure the agent sounded and whether it was right. Overconfident wrong
   verdicts are the expensive ones.
@@ -102,7 +102,7 @@ The statistics are established estimators, not invented heuristics:
   flagged no matter how right it looks, and cases can declare facts that
   sit nested in payload context; an agent that never surfaces them is
   restating the alert headline, not investigating. Where SIR-Bench needs
-  ROUGE plus an LLM judge, gavel cases are authored so exact matching
+  ROUGE plus an LLM judge, overruled cases are authored so exact matching
   keeps the grading path model-free.
 
 No LLM participates in any check. Same inputs, same findings, every run.
@@ -113,13 +113,13 @@ Stated plainly, because an auditor that asks for trust has already failed.
 
 - **No LLM in the grading path.** All checks are deterministic set and string
   logic over normalized artifacts. Same inputs, same findings, every time.
-- **Local-first.** Cases and evidence stay in your environment. gavel calls
+- **Local-first.** Cases and evidence stay in your environment. overruled calls
   your agent; nothing calls home. No telemetry.
 - **Reproducible.** Cases are versioned YAML in git. Scorecards are plain
   JSON/markdown/SARIF/JUnit you can archive and diff.
 - **Honest epistemics.** If the adapter cannot see an agent's enrichment
   calls, unverifiable citations are reported as warnings (possible
-  hallucination, verify manually), not as proven fabrication. GV-002 only
+  hallucination, verify manually), not as proven fabrication. OV-002 only
   goes critical when enrichment was visible and the citation still has no
   basis.
 - **Documented limitations.** See below.

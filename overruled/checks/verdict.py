@@ -5,7 +5,7 @@ from ..models import AgentArtifact, Case, CheckResult, Severity
 
 class VerdictCheck:
     check = "verdict"
-    rule_id = "GV-001"
+    rule_id = "OV-001"
 
     def run(self, case: Case, artifacts: list[AgentArtifact]) -> CheckResult:
         expected = case.expected_verdict.value

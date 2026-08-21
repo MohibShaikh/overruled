@@ -9,7 +9,7 @@ from ..models import AgentArtifact, Case, CheckResult, Severity
 
 class ConsistencyCheck:
     check = "consistency"
-    rule_id = "GV-004"
+    rule_id = "OV-004"
 
     def run(self, case: Case, artifacts: list[AgentArtifact]) -> CheckResult:
         if len(artifacts) < 2:

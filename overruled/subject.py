@@ -1,4 +1,4 @@
-"""Subject adapters: how gavel feeds a case to an agent and reads the artifact.
+"""Subject adapters: how overruled feeds a case to an agent and reads the artifact.
 
 An adapter receives the case event, drives the subject agent through its
 normal interface, and returns a normalized AgentArtifact. Adapters must

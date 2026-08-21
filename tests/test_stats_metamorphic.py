@@ -2,8 +2,8 @@
 
 import pytest
 
-from gavel.metamorphic import apply_transforms, rebrand_domain, rename_user, swap_source_ip
-from gavel.stats import mcnemar_exact, pass_k, verdict_flip_probability, wilson_interval
+from overruled.metamorphic import apply_transforms, rebrand_domain, rename_user, swap_source_ip
+from overruled.stats import mcnemar_exact, pass_k, verdict_flip_probability, wilson_interval
 
 
 class TestWilson:

@@ -2,10 +2,10 @@
 
 import pytest
 
-from gavel.checks.parroting import AlertParrotingCheck
-from gavel.metamorphic import TRANSFORMS, reformat_numbers, reorder_payload
-from gavel.models import AgentArtifact, Case, EvidenceItem, Severity
-from gavel.stats import brier_score, cohens_kappa, expected_loss, sprt_decide
+from overruled.checks.parroting import AlertParrotingCheck
+from overruled.metamorphic import TRANSFORMS, reformat_numbers, reorder_payload
+from overruled.models import AgentArtifact, Case, EvidenceItem, Severity
+from overruled.stats import brier_score, cohens_kappa, expected_loss, sprt_decide
 
 
 class TestKappa:
@@ -168,18 +168,18 @@ event: {event}
         return p
 
     def test_headline_discoverable_rejected(self, tmp_path):
-        from gavel.cases import load_case
+        from overruled.cases import load_case
         p = self._write(tmp_path, {"user": "svc-x", "payload": {"n": 1}})
         with pytest.raises(ValueError, match="headline"):
             load_case(p)
 
     def test_nested_discoverable_accepted(self, tmp_path):
-        from gavel.cases import load_case
+        from overruled.cases import load_case
         p = self._write(tmp_path, {"source_ip": "1.2.3.4", "payload": {"user": "svc-x"}})
         assert load_case(p).discoverable[0].ioc == "svc-x"
 
     def test_ungrounded_discoverable_rejected(self, tmp_path):
-        from gavel.cases import load_case
+        from overruled.cases import load_case
         p = self._write(tmp_path, {"source_ip": "1.2.3.4", "payload": {"n": 1}})
         with pytest.raises(ValueError, match="not grounded"):
             load_case(p)

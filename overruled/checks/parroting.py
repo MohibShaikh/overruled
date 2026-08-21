@@ -1,4 +1,4 @@
-"""GV-006: alert parroting and unjustified rulings.
+"""OV-006: alert parroting and unjustified rulings.
 
 From SIR-Bench (arXiv 2604.12040): security investigations are
 susceptible to "alert parroting" -- an agent that restates alert
@@ -14,7 +14,7 @@ Two failure modes, both deterministic:
   payload context, not in the alert headline) that a genuine
   investigation should surface.
 
-SIR-Bench matches findings with ROUGE plus an LLM judge. gavel cases
+SIR-Bench matches findings with ROUGE plus an LLM judge. overruled cases
 are authored, so exact token matching suffices and the grading path
 stays free of models.
 """
@@ -24,7 +24,7 @@ from ..models import AgentArtifact, Case, CheckResult, Severity
 
 class AlertParrotingCheck:
     check = "alert_parroting"
-    rule_id = "GV-006"
+    rule_id = "OV-006"
 
     def run(self, case: Case, artifacts: list[AgentArtifact]) -> CheckResult:
         failures: list[str] = []
