@@ -8,16 +8,19 @@ from pathlib import Path
 from .auditor import Auditor
 from .cases import load_cases
 from .report import print_card, to_junit, to_markdown, to_sarif
-from .subject import SubjectAdapter, ThreatSentinelAdapter
+from .subject import JSONAdapter, ThreatSentinelAdapter
 
 _FORMATS = ("rich", "markdown", "sarif", "junit")
 
 
-def _subject(spec: str) -> tuple[str, SubjectAdapter]:
+_ADAPTERS = {"threatsentinel": ThreatSentinelAdapter, "json": JSONAdapter}
+
+
+def _subject(spec: str) -> tuple[str, str]:
     name, sep, url = spec.partition("=")
     if not sep:
         raise argparse.ArgumentTypeError(f"expected name=url, got {spec!r}")
-    return name, ThreatSentinelAdapter(url)
+    return name, url
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -31,6 +34,8 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument("cases", nargs="+", type=Path, help="case files or directories")
     run_p.add_argument("--url", default="http://localhost:8000", help="subject agent base URL")
     run_p.add_argument("--token", default="dev-secret-key", help="bearer token for the subject")
+    run_p.add_argument("--adapter", choices=tuple(_ADAPTERS), default="threatsentinel",
+                       help="subject contract: ThreatSentinel REST or minimal JSON")
     run_p.add_argument("--runs", type=int, default=3, help="runs per case")
     run_p.add_argument("--adaptive", action="store_true",
                        help="stop each case early once SPRT decides (Wald 1945)")
@@ -42,6 +47,8 @@ def main(argv: list[str] | None = None) -> int:
     cmp_p.add_argument("--subject", dest="subjects", action="append", type=_subject,
                        required=True, metavar="NAME=URL")
     cmp_p.add_argument("--token", default="dev-secret-key")
+    cmp_p.add_argument("--adapter", choices=tuple(_ADAPTERS), default="threatsentinel",
+                       help="subject contract: ThreatSentinel REST or minimal JSON")
     cmp_p.add_argument("--runs", type=int, default=3)
 
     args = parser.parse_args(argv)
@@ -55,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
 
 async def _run(args) -> int:
     cases = load_cases(list(args.cases))
-    subject = ThreatSentinelAdapter(args.url, args.token)
+    subject = _ADAPTERS[args.adapter](args.url, args.token)
     card = await Auditor(subject, runs_per_case=args.runs, adaptive=args.adaptive).run(cases)
     _emit(card, args.format, args.out)
     return 0 if card.passed else 1
@@ -68,16 +75,18 @@ async def _compare(args) -> int:
     from .stats import mcnemar_exact
 
     cases = load_cases(list(args.cases))
+    subjects = [(name, _ADAPTERS[args.adapter](url, args.token))
+                for name, url in args.subjects]
     console = Console()
-    table = Table(title=f"Gavel comparison: {len(cases)} cases, {args.runs} runs each")
+    table = Table(title=f"overruled comparison: {len(cases)} cases, {args.runs} runs each")
     table.add_column("Case")
-    for name, _ in args.subjects:
+    for name, _ in subjects:
         table.add_column(name, justify="center")
 
-    cards: dict[str, dict[str, bool]] = {name: {} for name, _ in args.subjects}
+    cards: dict[str, dict[str, bool]] = {name: {} for name, _ in subjects}
     for case in cases:
         row = [f"{case.name}\n[dim]{case.id}[/dim]"]
-        for name, adapter in args.subjects:
+        for name, adapter in subjects:
             card = await Auditor(adapter, runs_per_case=args.runs).run([case])
             cards[name][case.id] = card.passed
             row.append("[green]PASS[/green]" if card.passed else "[red]FAIL[/red]")
@@ -89,7 +98,7 @@ async def _compare(args) -> int:
     )
     console.print(summary)
 
-    names = [name for name, _ in args.subjects]
+    names = [name for name, _ in subjects]
     if len(names) == 2:
         a, b = cards[names[0]], cards[names[1]]
         only_a = sum(1 for cid in a if a[cid] and not b[cid])

@@ -19,6 +19,40 @@ class SubjectAdapter(ABC):
     async def investigate(self, event: dict, run_index: int = 0) -> AgentArtifact: ...
 
 
+class JSONAdapter(SubjectAdapter):
+    """Drives a minimal-contract agent over HTTP.
+
+    POSTs `{"event_data": event}` and expects back a flat verdict:
+    `{"verdict": "true_positive"|"false_positive"|"escalate",
+      "cited_iocs": [...], "confidence": 0.0-1.0}`. Missing fields are
+    tolerated; an unreadable body becomes verdict=error.
+    """
+
+    def __init__(self, base_url: str, token: str = "", name: str = ""):
+        self.name = name or f"agent@{base_url}"
+        self.client = httpx.AsyncClient(
+            base_url=base_url.rstrip("/"),
+            headers={"Authorization": f"Bearer {token}"} if token else {},
+            timeout=60.0,
+        )
+
+    async def investigate(self, event: dict, run_index: int = 0) -> AgentArtifact:
+        response = await self.client.post("/", json={"event_data": event})
+        if response.status_code != 200:
+            return AgentArtifact(verdict="error", run_index=run_index)
+        try:
+            body = response.json()
+        except ValueError:
+            return AgentArtifact(verdict="error", run_index=run_index)
+        return AgentArtifact(
+            verdict=body.get("verdict") or None,
+            confidence=body.get("confidence"),
+            cited_iocs=[str(i) for i in (body.get("cited_iocs") or [])],
+            raw=body,
+            run_index=run_index,
+        )
+
+
 class ThreatSentinelAdapter(SubjectAdapter):
     """Drives a ThreatSentinel instance over its REST API.
 
