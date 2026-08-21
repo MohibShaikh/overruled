@@ -2,6 +2,8 @@ id: case-privesc-addadmin-001
 name: Account added to Domain Admins off-hours
 expected_verdict: true_positive
 mitre_attack: [T1098]
+metamorphic:
+  - swap_source_ip
 notes: >
   Directory change adds a dormant account to Domain Admins at 02:14,
   performed from a non-DC host. Correct agent rules true positive.

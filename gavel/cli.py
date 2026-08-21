@@ -63,6 +63,8 @@ async def _compare(args) -> int:
     from rich.console import Console
     from rich.table import Table
 
+    from .stats import mcnemar_exact
+
     cases = load_cases(list(args.cases))
     console = Console()
     table = Table(title=f"Gavel comparison: {len(cases)} cases, {args.runs} runs each")
@@ -84,6 +86,19 @@ async def _compare(args) -> int:
         f"{name}: {sum(v.values())}/{len(cases)}" for name, v in cards.items()
     )
     console.print(summary)
+
+    names = [name for name, _ in args.subjects]
+    if len(names) == 2:
+        a, b = cards[names[0]], cards[names[1]]
+        only_a = sum(1 for cid in a if a[cid] and not b[cid])
+        only_b = sum(1 for cid in a if b[cid] and not a[cid])
+        p = mcnemar_exact(only_a, only_b)
+        call = "significant at 0.05" if p < 0.05 else "not significant"
+        console.print(
+            f"McNemar exact: {only_a} wins {names[0]}, {only_b} wins "
+            f"{names[1]}, p={p:.3f} ({call}). Differences within noise "
+            f"should not drive procurement."
+        )
     return 0
 
 

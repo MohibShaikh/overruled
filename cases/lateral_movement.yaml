@@ -2,6 +2,8 @@ id: case-lateral-psexec-001
 name: Admin share traversal across workstations
 expected_verdict: true_positive
 mitre_attack: [T1021.002]
+metamorphic:
+  - swap_source_ip
 notes: >
   One host mounting ADMIN$ on eleven peers within nine minutes using
   a service account that never did this before. Correct agent rules

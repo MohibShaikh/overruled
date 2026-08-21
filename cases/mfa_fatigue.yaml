@@ -2,6 +2,8 @@ id: case-mfa-fatigue-001
 name: MFA push bombing then 4am approval
 expected_verdict: true_positive
 mitre_attack: [T1621]
+metamorphic:
+  - rename_user
 notes: >
   Twenty-eight denied pushes over fifty minutes followed by one
   approval at 04:11. Correct agent rules true positive.

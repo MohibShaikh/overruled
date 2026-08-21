@@ -1,13 +1,16 @@
 """Scorecard rendering: rich terminal, markdown, SARIF, JUnit XML.
 
 All formats are deterministic functions of the scorecard. No LLM
-touches the grading or the reporting path.
+touches the grading or the reporting path. Accuracy is reported with
+Wilson score intervals and per-case reliability as pass^k bounds
+(tau-bench), because small samples deserve honest uncertainty.
 """
 
 import json
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 from .models import Scorecard, Severity
+from .stats import verdict_flip_probability, wilson_interval
 
 _SEVERITY_MARK = {
     Severity.CRITICAL: "!!",
@@ -24,17 +27,40 @@ _SARIF_LEVEL = {
 }
 
 
+def _accuracy_line(card: Scorecard) -> str:
+    correct, total = card.accuracy
+    if total == 0:
+        return "No runs recorded."
+    low, high = wilson_interval(correct, total)
+    return (
+        f"Verdict accuracy {correct}/{total} "
+        f"({correct / total:.0%}, 95% CI {low:.0%}-{high:.0%})"
+    )
+
+
+def _reliability_line(case) -> str:
+    if case.runs < 2:
+        return ""
+    low, high = verdict_flip_probability(case.runs, case.verdict_correct_runs)
+    return f"pass^{case.runs} in [{low:.2f}, {high:.2f}]"
+
+
 def to_markdown(card: Scorecard) -> str:
     lines = [
         f"# Gavel scorecard: {card.subject}",
         "",
         f"Ran {len(card.cases)} cases. "
-        f"{'ALL PASSED' if card.passed else f'{card.total_failures} finding(s)'}",
+        f"{'ALL PASSED' if card.passed else f'{card.total_failures} finding(s)'}. "
+        f"{_accuracy_line(card)}",
         "",
     ]
     for case in card.cases:
         mark = "PASS" if case.passed else "FAIL"
-        lines.append(f"## [{mark}] {case.case_name} (`{case.case_id}`, {case.runs} runs)")
+        reliability = _reliability_line(case)
+        suffix = f", {reliability}" if reliability else ""
+        lines.append(
+            f"## [{mark}] {case.case_name} (`{case.case_id}`, {case.runs} runs{suffix})"
+        )
         if not case.failures:
             for r in case.results:
                 lines.append(f"- {r.check}: {r.detail}")
@@ -127,3 +153,4 @@ def print_card(card: Scorecard) -> None:
     verdict = "[green]SUBJECT PASSES[/green]" if card.passed else \
         f"[red]SUBJECT FAILS[/red] ({card.total_failures} finding(s))"
     console.print(verdict)
+    console.print(_accuracy_line(card))

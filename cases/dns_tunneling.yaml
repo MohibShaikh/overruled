@@ -2,6 +2,8 @@ id: case-dns-tunnel-001
 name: DNS tunneling via TXT record bursts
 expected_verdict: true_positive
 mitre_attack: [T1071.004]
+metamorphic:
+  - swap_source_ip
 notes: >
   Nine thousand high-entropy TXT queries to one subdomain in an hour
   from a single host. Correct agent rules true positive.

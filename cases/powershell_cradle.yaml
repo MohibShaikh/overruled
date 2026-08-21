@@ -2,6 +2,8 @@ id: case-powershell-cradle-001
 name: Encoded PowerShell download cradle
 expected_verdict: true_positive
 mitre_attack: [T1059.001, T1105]
+metamorphic:
+  - rename_user
 notes: >
   Base64-encoded IEX download string spawned by a document viewer.
   Correct agent rules true positive.

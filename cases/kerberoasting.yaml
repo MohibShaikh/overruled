@@ -2,6 +2,8 @@ id: case-kerberoasting-001
 name: Kerberoasting ticket burst
 expected_verdict: true_positive
 mitre_attack: [T1558.003]
+metamorphic:
+  - rename_user
 notes: >
   RC4 ticket requests for 62 service SPNs in four minutes from a
   workstation whose user was on leave. Correct agent rules true

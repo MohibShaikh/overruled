@@ -2,6 +2,8 @@ id: case-sqli-attempt-001
 name: SQL injection against public login endpoint
 expected_verdict: true_positive
 mitre_attack: [T1190]
+metamorphic:
+  - rebrand_domain
 notes: >
   Union-select and sleep() payloads from a rotating proxy range
   against the production auth endpoint. Correct agent rules true

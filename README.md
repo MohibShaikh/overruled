@@ -60,6 +60,25 @@ gavel compare cases/ \
 | GV-002 | fabricated_evidence | critical | Are cited indicators real facts from the case or observed enrichment? |
 | GV-003 | missed_evidence | major | Did it surface the planted indicators a competent investigator would find? |
 | GV-004 | consistency | major | Same case, N runs, same ruling? |
+| GV-005 | metamorphic_invariance | major | Does the ruling survive a cosmetic change that preserves ground truth? |
+
+## Methods
+
+The statistics are established estimators, not invented heuristics:
+
+- **Wilson score intervals** (Wilson 1927) on verdict accuracy. A subject
+  that passes 27 of 30 runs is reported as a range, never a bare percentage.
+- **pass^k reliability** (tau-bench, Yao et al. 2024) bounds per-case
+  reliability across repeated runs. An agent that is right 90% of single
+  runs still fails a three-run gate about a quarter of the time.
+- **Exact McNemar test** (McNemar 1947) in `gavel compare`. When one vendor
+  beats another, gavel reports whether the difference is significant at
+  0.05 or procurement noise.
+- **Metamorphic testing** (Chen et al.): cases declare which cosmetic
+  transforms preserve their ground truth (`metamorphic: [rename_user]`).
+  A flipped verdict means the agent pattern-matched surface features.
+
+No LLM participates in any check. Same inputs, same findings, every run.
 
 ## Trust properties
 

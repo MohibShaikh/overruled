@@ -2,6 +2,8 @@ id: case-webshell-001
 name: ASPX webshell written to wwwroot
 expected_verdict: true_positive
 mitre_attack: [T1505.003]
+metamorphic:
+  - rename_user
 notes: >
   .aspx file dropped into wwwroot by the app pool identity, followed
   by POSTs with cmd parameters. Correct agent rules true positive.

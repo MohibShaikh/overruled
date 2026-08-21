@@ -2,6 +2,9 @@ id: case-c2-beacon-001
 name: Periodic C2 beacon from workstation
 expected_verdict: true_positive
 mitre_attack: [T1071.001]
+metamorphic:
+  - swap_source_ip
+  - rename_user
 notes: >
   Regular-interval HTTPS callbacks to a freshly registered domain.
   Correct agent rules true positive and cites the destination.

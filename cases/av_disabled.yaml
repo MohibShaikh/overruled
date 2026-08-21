@@ -2,6 +2,8 @@ id: case-av-disabled-001
 name: Defender real-time protection disabled by script
 expected_verdict: true_positive
 mitre_attack: [T1562.001]
+metamorphic:
+  - rename_user
 notes: >
   Set-MpPreference -DisableRealtimeMonitoring executed from a user
   temp directory. Correct agent rules true positive.

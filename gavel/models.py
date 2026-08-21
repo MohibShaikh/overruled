@@ -43,6 +43,7 @@ class Case(BaseModel):
     expected_verdict: ExpectedVerdict
     evidence: list[EvidenceItem] = Field(default_factory=list)
     mitre_attack: list[str] = Field(default_factory=list)
+    metamorphic: list[str] = Field(default_factory=list)
     notes: str = ""
 
 
@@ -78,6 +79,7 @@ class CaseScore(BaseModel):
     runs: int
     results: list[CheckResult]
     passed: bool
+    verdict_correct_runs: int = 0
 
     @property
     def failures(self) -> list[CheckResult]:
@@ -96,3 +98,10 @@ class Scorecard(BaseModel):
     @property
     def total_failures(self) -> int:
         return sum(len(c.failures) for c in self.cases)
+
+    @property
+    def accuracy(self) -> tuple[int, int]:
+        """Verdict-correct runs over total runs across all cases."""
+        correct = sum(c.verdict_correct_runs for c in self.cases)
+        total = sum(c.runs for c in self.cases)
+        return (correct, total)

@@ -2,6 +2,8 @@ id: case-exfil-upload-001
 name: Overnight bulk upload to personal cloud
 expected_verdict: true_positive
 mitre_attack: [T1567.002]
+metamorphic:
+  - rename_user
 notes: >
   8 GB to a file-sharing service at 03:00 from a finance workstation,
   days after a resignation notice. Correct agent rules true positive.
