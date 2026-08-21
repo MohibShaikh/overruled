@@ -10,7 +10,13 @@ import json
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 from .models import Scorecard, Severity
-from .stats import verdict_flip_probability, wilson_interval
+from .stats import (
+    brier_score,
+    cohens_kappa,
+    expected_loss,
+    verdict_flip_probability,
+    wilson_interval,
+)
 
 _SEVERITY_MARK = {
     Severity.CRITICAL: "!!",
@@ -32,10 +38,35 @@ def _accuracy_line(card: Scorecard) -> str:
     if total == 0:
         return "No runs recorded."
     low, high = wilson_interval(correct, total)
-    return (
+    parts = [
         f"Verdict accuracy {correct}/{total} "
         f"({correct / total:.0%}, 95% CI {low:.0%}-{high:.0%})"
-    )
+    ]
+    kappa = cohens_kappa(card.ruling_pairs)
+    if kappa is not None:
+        band = "good" if kappa >= 0.8 else "fair" if kappa >= 0.6 else "poor"
+        parts.append(f"kappa {kappa:.2f} ({band})")
+    fn, fp = card.security_errors
+    if fn or fp:
+        loss = expected_loss(fn, fp, total_runs=card.accuracy[1])
+        parts.append(
+            f"expected loss {loss:.1f} units/100 alerts "
+            f"(FN weight 20:1, {fn} missed threats, {fp} false alarms)"
+        )
+    return ", ".join(parts)
+
+
+def _calibration_line(card: Scorecard) -> str | None:
+    pairs = []
+    for c in card.cases:
+        for conf, ruling in zip(c.confidences, c.rulings, strict=True):
+            if conf is None:
+                continue
+            pairs.append((conf, ruling == c.expected_verdict))
+    score = brier_score(pairs)
+    if score is None:
+        return None
+    return f"Confidence calibration (Brier): {score:.3f} over {len(pairs)} scored runs"
 
 
 def _reliability_line(case) -> str:
@@ -67,6 +98,11 @@ def to_markdown(card: Scorecard) -> str:
         else:
             for r in case.failures:
                 lines.append(f"- **{r.rule_id} ({r.severity.value})** {r.check}: {r.detail}")
+        lines.append("")
+    calibration = _calibration_line(card)
+    if calibration:
+        lines.append("## Calibration")
+        lines.append(f"- {calibration}")
         lines.append("")
     return "\n".join(lines)
 
@@ -154,3 +190,6 @@ def print_card(card: Scorecard) -> None:
         f"[red]SUBJECT FAILS[/red] ({card.total_failures} finding(s))"
     console.print(verdict)
     console.print(_accuracy_line(card))
+    calibration = _calibration_line(card)
+    if calibration:
+        console.print(calibration)

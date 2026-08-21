@@ -74,6 +74,19 @@ The statistics are established estimators, not invented heuristics:
 - **Exact McNemar test** (McNemar 1947) in `gavel compare`. When one vendor
   beats another, gavel reports whether the difference is significant at
   0.05 or procurement noise.
+- **Cohen's kappa** (1960): chance-corrected agreement. An agent that
+  always answers the majority class looks accurate by luck; kappa does not
+  let it. Below 0.6 gavel labels agreement poor.
+- **Brier score** (1950) on stated confidence: mean squared error between
+  how sure the agent sounded and whether it was right. Overconfident wrong
+  verdicts are the expensive ones.
+- **Expected loss** (Neyman-Pearson decision theory): security errors are
+  asymmetric, so scorecards report loss-weighted cost per 100 alerts at an
+  explicit 20:1 missed-threat-to-false-alarm weight. Argue the weights,
+  not the math.
+- **SPRT adaptive stopping** (Wald 1945): `--adaptive` stops re-running a
+  case once the record statistically supports reliable or unreliable,
+  instead of burning fixed N subject calls.
 - **Metamorphic testing** (Chen et al.): cases declare which cosmetic
   transforms preserve their ground truth (`metamorphic: [rename_user]`).
   A flipped verdict means the agent pattern-matched surface features.

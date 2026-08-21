@@ -92,6 +92,7 @@ class ThreatSentinelAdapter(SubjectAdapter):
             verdict=verdict,
             risk_score=risk.get("risk_score"),
             risk_level=level or None,
+            confidence=risk.get("confidence"),
             cited_iocs=self._extract_iocs(body),
             recommended_actions=[
                 a.get("description", "") for a in (body.get("recommended_actions") or [])

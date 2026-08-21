@@ -56,6 +56,7 @@ class AgentArtifact(BaseModel):
     verdict: str | None = None
     risk_score: float | None = None
     risk_level: str | None = None
+    confidence: float | None = None
     cited_iocs: list[str] = Field(default_factory=list)
     enriched_iocs: list[str] = Field(default_factory=list)
     recommended_actions: list[str] = Field(default_factory=list)
@@ -80,6 +81,9 @@ class CaseScore(BaseModel):
     results: list[CheckResult]
     passed: bool
     verdict_correct_runs: int = 0
+    expected_verdict: str = ""
+    rulings: list[str] = Field(default_factory=list)
+    confidences: list[float | None] = Field(default_factory=list)
 
     @property
     def failures(self) -> list[CheckResult]:
@@ -105,3 +109,27 @@ class Scorecard(BaseModel):
         correct = sum(c.verdict_correct_runs for c in self.cases)
         total = sum(c.runs for c in self.cases)
         return (correct, total)
+
+    @property
+    def ruling_pairs(self) -> list[tuple[str, str]]:
+        """(expected, actual) per run, for kappa and loss math."""
+        pairs = []
+        for c in self.cases:
+            pairs.extend((c.expected_verdict, r) for r in c.rulings)
+        return pairs
+
+    @property
+    def security_errors(self) -> tuple[int, int]:
+        """(false_negatives, false_positives) across all runs.
+
+        FN: malicious ground truth ruled benign. FP: benign ground truth
+        ruled malicious. Escalate-expected runs are excluded; they are
+        ambiguous by design, not errors either way.
+        """
+        fn = fp = 0
+        for expected, ruling in self.ruling_pairs:
+            if expected == "true_positive" and ruling == "false_positive":
+                fn += 1
+            elif expected == "false_positive" and ruling == "true_positive":
+                fp += 1
+        return (fn, fp)

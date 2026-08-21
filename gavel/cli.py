@@ -32,6 +32,8 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument("--url", default="http://localhost:8000", help="subject agent base URL")
     run_p.add_argument("--token", default="dev-secret-key", help="bearer token for the subject")
     run_p.add_argument("--runs", type=int, default=3, help="runs per case")
+    run_p.add_argument("--adaptive", action="store_true",
+                       help="stop each case early once SPRT decides (Wald 1945)")
     run_p.add_argument("--format", choices=_FORMATS, default="rich")
     run_p.add_argument("--out", type=Path, help="write report to file instead of stdout")
 
@@ -54,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
 async def _run(args) -> int:
     cases = load_cases(list(args.cases))
     subject = ThreatSentinelAdapter(args.url, args.token)
-    card = await Auditor(subject, runs_per_case=args.runs).run(cases)
+    card = await Auditor(subject, runs_per_case=args.runs, adaptive=args.adaptive).run(cases)
     _emit(card, args.format, args.out)
     return 0 if card.passed else 1
 
