@@ -2,7 +2,17 @@
 name = "gavel-audit"
 version = "0.1.0"
 description = "The verdict auditor for AI SOC agents"
+readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "MohibShaikh" }]
+keywords = ["security", "soc", "ai-agents", "evaluation", "benchmark"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
 dependencies = [
     "httpx>=0.27",
     "pydantic>=2.7",

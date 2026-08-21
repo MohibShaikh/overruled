@@ -21,6 +21,12 @@ and trusting is unmeasured verdict quality. gavel is the measurement.
 ## Install
 
 ```
+pip install gavel-audit
+```
+
+The distribution is `gavel-audit`; the command is `gavel`. For development:
+
+```
 pip install -e ".[dev]"
 ```
 
