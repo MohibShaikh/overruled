@@ -10,3 +10,4 @@ venv/
 .coverage
 scorecards/
 AGENTS.md
+.hypothesis/
