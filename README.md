@@ -1,4 +1,4 @@
-<img src="assets/logo.svg" alt="" width="88" align="left">
+<img src="https://raw.githubusercontent.com/MohibShaikh/overruled/main/assets/logo.png" alt="" width="88" align="left">
 
 # overruled
 
