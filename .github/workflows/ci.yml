@@ -7,11 +7,15 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
       - run: ruff check .
       - run: pytest -q
@@ -30,7 +34,7 @@ jobs:
           from pathlib import Path
           from overruled.cases import load_cases
           cases = load_cases([Path("cases")])
-          assert len(cases) >= 30, f"case pack shrank: {len(cases)}"
+          assert len(cases) >= 50, f"case pack shrank: {len(cases)}"
           ids = [c.id for c in cases]
           assert len(ids) == len(set(ids)), "duplicate case ids"
           for c in cases:
