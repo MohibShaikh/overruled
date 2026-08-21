@@ -1,0 +1,17 @@
+id: case-fp-logreplay-001
+name: Ingestion spike from buffered log replay
+expected_verdict: false_positive
+metamorphic: [reformat_numbers]
+notes: >
+  Half a million events in ten minutes looks like log-clearing cover
+  traffic; it is the collector replaying its buffer after an outage.
+  Correct agent rules false positive.
+event:
+  event_type: multi_signal
+  source_ip: 10.22.4.19
+  payload:
+    events_ingested: 512000
+    window_minutes: 10
+    replay_backlog: true
+    outage_incident: INC0033945
+    collector: logrelay-02

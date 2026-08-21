@@ -1,0 +1,17 @@
+id: case-fp-qa-loadtest-001
+name: Credential stuffing shape from QA load rig
+expected_verdict: false_positive
+notes: >
+  Login cadence indistinguishable from stuffing, but sources are QA
+  rigs running synthetic accounts under a load-test plan. Correct agent
+  rules false positive.
+event:
+  event_type: login_anomaly
+  source_ip: 10.22.4.180
+  payload:
+    attempts_per_minute: 900
+    account_prefix: qa-synth-
+    distinct_accounts: 5000
+    test_plan: LT-2026-Q3-14
+    environment_tag: perf-lab
+    mfa_enforced: false

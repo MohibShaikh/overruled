@@ -1,0 +1,27 @@
+id: case-esc-exit-delete-001
+name: Delegated account mass-deletes held files during leave
+expected_verdict: escalate
+mitre_attack: [T1485]
+discoverable:
+- ioc: ea-marsh
+  kind: account
+  description: delegated assistant acting for owner on parental leave
+notes: >
+  Bulk deletion inside a legal-hold folder by a delegated account while
+  the data owner is away. Spoilation risk needs HR and legal, not an
+  automated close. Correct agent escalates and names who acted.
+event:
+  event_type: file_event
+  host_ip: 10.22.4.58
+  payload:
+    actor: ea-marsh
+    folder: legal-hold-2024-invoices
+    files_deleted: 2600
+    delegation_active: true
+    owner_status: parental-leave
+    legal_hold_flag: true
+evidence:
+  - ioc: legal-hold-2024-invoices
+    kind: asset
+    description: hold scope touched
+    must_surface: true

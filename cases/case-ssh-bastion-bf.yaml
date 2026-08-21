@@ -1,0 +1,23 @@
+id: case-ssh-bastion-bf-001
+name: SSH brute force succeeds against bastion
+expected_verdict: true_positive
+mitre_attack: [T1110]
+metamorphic: [swap_source_ip]
+notes: >
+  120 failures then a success on an internet-facing bastion. Correct
+  agent rules true positive and cites the source.
+event:
+  event_type: login_anomaly
+  source_ip: 198.51.100.77
+  target_host: bastion.corp.internal
+  target_user: deploy
+  payload:
+    failed_attempts: 120
+    succeeded_after_failures: true
+    window_minutes: 14
+    auth_method: publickey
+evidence:
+  - ioc: 198.51.100.77
+    kind: ip
+    description: attacking source
+    must_surface: true

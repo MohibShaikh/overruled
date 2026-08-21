@@ -1,0 +1,18 @@
+id: case-fp-dbexport-001
+name: Large nightly export by analytics service account
+expected_verdict: false_positive
+metamorphic: [reformat_numbers]
+notes: >
+  Big table pulls outside business hours from a service account; the
+  job is scheduled, de-identified, and lands in the internal warehouse.
+  Correct agent rules false positive.
+event:
+  event_type: db_export
+  source_ip: 10.22.4.71
+  payload:
+    service_account: svc-analytics
+    rows_exported: 1240000
+    table: usage-events-deid
+    de_identified: true
+    destination: warehouse.corp.internal
+    schedule: nightly-0100

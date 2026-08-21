@@ -1,0 +1,15 @@
+id: case-fp-wireshark-001
+name: Packet capture on training lab host
+expected_verdict: false_positive
+notes: >
+  Wireshark on a lab machine during a supervised IR course. Correct
+  agent rules false positive.
+event:
+  event_type: endpoint_anomaly
+  host_ip: 10.22.4.117
+  user: trainee-07
+  payload:
+    process: wireshark
+    host_role: training-lab-07
+    course: "IR-201 packet analysis"
+    supervised_session: true

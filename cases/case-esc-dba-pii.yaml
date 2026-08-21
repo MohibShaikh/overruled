@@ -1,0 +1,27 @@
+id: case-esc-dba-pii-001
+name: DBA pulls customer PII out of scope post-resignation
+expected_verdict: escalate
+mitre_attack: [T1213]
+discoverable:
+- ioc: k.osei
+  kind: account
+  description: resigning administrator, notice period ending
+notes: >
+  Legitimate credentials, legitimate database, illegitimate purpose.
+  Needs a human ownership decision, not an automated close. Correct
+  agent escalates and surfaces who did it.
+event:
+  event_type: db_query
+  source_ip: 10.22.4.34
+  payload:
+    user: k.osei
+    tables: customer-pii
+    rows_read: 94000
+    after_hours: true
+    role_scope: schema-maintenance-only
+    resignation_notice_days_ago: 3
+evidence:
+  - ioc: customer-pii
+    kind: asset
+    description: regulated data touched
+    must_surface: true

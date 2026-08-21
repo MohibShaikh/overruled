@@ -1,0 +1,16 @@
+id: case-fp-software-deploy-001
+name: Unsigned-looking binary from sanctioned software rollout
+expected_verdict: false_positive
+notes: >
+  New executable appearing broadly across endpoints trips software
+  discovery; the hash matches the IT deployment manifest. Correct agent
+  rules false positive.
+event:
+  event_type: endpoint_anomaly
+  host_ip: 10.22.4.150
+  payload:
+    binary_path: "C:/Program Files/LedgerSync/agent.exe"
+    sha256: aa4c961d2f0b3e8f71c25d99b0aa6f37c1d84e5fb2a90c33d7e81b46fa09c512
+    hosts_observed: 340
+    publisher_rollout: internal-it
+    deployment_manifest_match: true

@@ -1,0 +1,17 @@
+id: case-fp-timesync-001
+name: Kerberos failure storm after time-server maintenance
+expected_verdict: false_positive
+metamorphic: [reformat_numbers]
+notes: >
+  Mass authentication failures with clock-skew signatures right after
+  planned NTP maintenance; workstations resyncing. Correct agent rules
+  false positive.
+event:
+  event_type: login_anomaly
+  source_ip: 10.22.4.12
+  payload:
+    failures: 1900
+    error_class: clock-skew
+    time_server: ntp01.corp.internal
+    maintenance_incident: INC0033891
+    resync_observed: true

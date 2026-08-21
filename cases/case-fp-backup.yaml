@@ -1,0 +1,17 @@
+id: case-fp-backup-001
+name: Nightly bulk transfer to backup vendor
+expected_verdict: false_positive
+metamorphic: [reorder_payload]
+notes: >
+  Looks like exfiltration by volume but is the sanctioned backup job.
+  Correct agent rules false positive using the job context.
+event:
+  event_type: data_exfiltration
+  source_ip: 10.22.4.80
+  dest_domain: vault.backupvendor.example.com
+  payload:
+    bytes_uploaded: 214748364800
+    local_hour: 2
+    job_name: nightly-incremental
+    change_ticket: CHG0004388
+    vendor_approved_destination: true

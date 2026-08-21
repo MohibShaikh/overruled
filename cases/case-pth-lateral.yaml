@@ -1,0 +1,22 @@
+id: case-pth-lateral-001
+name: Pass-the-hash spreading across workstations
+expected_verdict: true_positive
+mitre_attack: [T1550.002]
+notes: >
+  One NTLM hash authenticating on four hosts in minutes without any
+  interactive logon. Correct agent rules true positive and cites the
+  hash.
+event:
+  event_type: endpoint_anomaly
+  host_ip: 10.22.6.77
+  payload:
+    auth_type: ntlm-type9-no-interaction
+    hash_suffix: 8f21c4
+    hosts_touched: 4
+    window_minutes: 6
+    originating_host: ws-fin-114
+evidence:
+  - ioc: 8f21c4
+    kind: hash
+    description: reused credential hash
+    must_surface: true

@@ -1,0 +1,16 @@
+id: case-fp-cert-window-001
+name: Cipher-suite alerts during certificate renewal
+expected_verdict: false_positive
+metamorphic: [reorder_payload]
+notes: >
+  Handshake anomaly burst across edge nodes matches the scheduled TLS
+  certificate rotation. Correct agent rules false positive.
+event:
+  event_type: network_anomaly
+  source_ip: 10.22.4.240
+  payload:
+    alerts: handshake-failure
+    affected_nodes: 6
+    change_ticket: CHG0004610
+    maintenance_window: active
+    activity: certificate-renewal

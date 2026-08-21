@@ -1,0 +1,22 @@
+id: case-lsass-dump-001
+name: LSASS memory dump via comsvcs
+expected_verdict: true_positive
+mitre_attack: [T1003.001]
+metamorphic: [rename_user]
+notes: >
+  rundll32 loading comsvcs MiniDump against LSASS. Textbook credential
+  dumping. Correct agent rules true positive.
+event:
+  event_type: endpoint_anomaly
+  host_ip: 10.22.6.42
+  user: j.reyes
+  payload:
+    process_tree: ["rundll32.exe", "comsvcs.dll"]
+    command: "rundll32.exe C:/Windows/System32/comsvcs.dll, MiniDump 704"
+    output_file: "C:/Windows/Temp/out.dmp"
+    target_process: lsass.exe
+evidence:
+  - ioc: MiniDump
+    kind: command
+    description: lsass dump switch
+    must_surface: true

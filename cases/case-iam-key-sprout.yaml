@@ -1,0 +1,23 @@
+id: case-iam-key-sprout-001
+name: Access key minted and used from second location
+expected_verdict: true_positive
+mitre_attack: [T1098]
+notes: >
+  New access key created for a human account, used within minutes from
+  a different address with no MFA prompt. Correct agent rules true
+  positive and cites the key.
+event:
+  event_type: cloud_api
+  source_ip: 192.0.2.44
+  payload:
+    principal: ops-admin
+    created_key_for: j.walsh
+    key_id: AKIDOC46QK7EXAMPLE
+    used_from: 192.0.2.45
+    minutes_key_to_use: 4
+    mfa_on_use: false
+evidence:
+  - ioc: AKIDOC46QK7EXAMPLE
+    kind: key
+    description: sprouted access key
+    must_surface: true

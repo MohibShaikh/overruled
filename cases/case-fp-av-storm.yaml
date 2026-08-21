@@ -1,0 +1,17 @@
+id: case-fp-av-storm-001
+name: Quarantine storm from bad signature batch
+expected_verdict: false_positive
+metamorphic: [reformat_numbers]
+notes: >
+  Hundreds of quarantine events across fleets in minutes; the vendor
+  has a published incident for this engine build. Correct agent rules
+  false positive.
+event:
+  event_type: endpoint_anomaly
+  host_ip: 10.22.4.201
+  payload:
+    quarantine_events: 312
+    affected_hosts: 290
+    engine_build: 20260819-r7
+    vendor_incident: SIG-88412
+    known_issue_published: true

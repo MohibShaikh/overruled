@@ -1,0 +1,17 @@
+id: case-esc-browser-inject-001
+name: Unsigned module injected into browser, no intel match
+expected_verdict: escalate
+mitre_attack: [T1176]
+notes: >
+  Code injection into a browser process from an unsigned user-space
+  module with zero threat-intel coverage. Cannot be closed either way
+  without human triage. Correct agent escalates.
+event:
+  event_type: endpoint_anomaly
+  host_ip: 10.22.4.210
+  payload:
+    process_tree: ["chrome", "svcext.dll"]
+    module_path: "C:/Users/dev/AppData/Roaming/svcext.dll"
+    signed: false
+    threat_intel_matches: 0
+    injection_technique: remote-thread

@@ -1,0 +1,18 @@
+id: case-fp-dlp-migration-001
+name: Mass file staging during storage migration
+expected_verdict: false_positive
+metamorphic: [reformat_numbers]
+notes: >
+  Bulk copy pattern typical of ransomware staging, actually the
+  sanctioned cloud migration run by its admin account. Correct agent
+  rules false positive.
+event:
+  event_type: data_staging
+  host_ip: 10.22.4.92
+  payload:
+    user: dlp-admin
+    files_copied: 18400
+    window_minutes: 45
+    project: box-to-cloud-migration
+    change_ticket: CHG0004502
+    scheduled_run: true

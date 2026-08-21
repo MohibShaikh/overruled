@@ -1,0 +1,17 @@
+id: case-fp-spray-sim-001
+name: Password spray alert from awareness-testing vendor
+expected_verdict: false_positive
+notes: >
+  Dozens of failures matching spray cadence, but every attempt was MFA-
+  blocked and the source is the contracted phishing-simulation platform
+  arriving through corporate egress. Correct agent rules false positive.
+event:
+  event_type: login_anomaly
+  source_ip: 10.5.1.9
+  payload:
+    failed_attempts: 61
+    targets_touched: 48
+    mfa_blocked_all: true
+    egress_identity: corp-vpn-edge-02
+    vendor_platform: phishsim.mailguard.example.com
+    engagement_ticket: CHG0004477

@@ -1,0 +1,23 @@
+id: case-ci-token-cloud-001
+name: Stolen CI token drains artifact bucket
+expected_verdict: true_positive
+mitre_attack: [T1078.004]
+notes: >
+  A CI service token suddenly authenticating from a residential range
+  and bulk-downloading a private artifacts bucket. Correct agent rules
+  true positive and cites the bucket.
+event:
+  event_type: cloud_api
+  source_ip: 198.51.100.66
+  payload:
+    principal: svc-ci-cd
+    action_set: [list-objects, batch-get]
+    bucket: corp-release-artifacts
+    objects_downloaded: 380
+    prior_source_prefix: 10.22.
+    token_age_days: 210
+evidence:
+  - ioc: corp-release-artifacts
+    kind: asset
+    description: drained bucket
+    must_surface: true
