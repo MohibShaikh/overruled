@@ -33,6 +33,27 @@ _SARIF_LEVEL = {
 }
 
 
+def _scope_line(card: Scorecard) -> str | None:
+    """Coverage, stated whenever anything was mapped or excluded.
+
+    A percentage with cases silently dropped is a worse number than a
+    lower percentage with the drops named.
+    """
+    if not card.excluded and not card.mapped_case_ids:
+        return None
+    graded = len(card.cases)
+    parts = [f"Graded {graded} of {graded + len(card.excluded)} cases"]
+    if card.mapped_case_ids:
+        parts.append(f"{len(card.mapped_case_ids)} mapped into the subject's taxonomy")
+    if card.excluded:
+        types = sorted({e.event_type for e in card.excluded if e.event_type})
+        parts.append(
+            f"{len(card.excluded)} excluded as outside it"
+            + (f" ({', '.join(types)})" if types else "")
+        )
+    return ", ".join(parts) + "."
+
+
 def _accuracy_line(card: Scorecard) -> str:
     correct, total = card.accuracy
     if total == 0:
@@ -85,6 +106,9 @@ def to_markdown(card: Scorecard) -> str:
         f"{_accuracy_line(card)}",
         "",
     ]
+    scope = _scope_line(card)
+    if scope:
+        lines.extend([scope, ""])
     for case in card.cases:
         mark = "PASS" if case.passed else "FAIL"
         reliability = _reliability_line(case)
@@ -190,6 +214,9 @@ def print_card(card: Scorecard) -> None:
         f"[red]SUBJECT FAILS[/red] ({card.total_failures} finding(s))"
     console.print(verdict)
     console.print(_accuracy_line(card))
+    scope = _scope_line(card)
+    if scope:
+        console.print(scope)
     calibration = _calibration_line(card)
     if calibration:
         console.print(calibration)

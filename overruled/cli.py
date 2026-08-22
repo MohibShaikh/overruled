@@ -38,6 +38,9 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument("--adapter", choices=tuple(_ADAPTERS), default="threatsentinel",
                        help="subject contract: ThreatSentinel REST or minimal JSON")
     run_p.add_argument("--runs", type=int, default=3, help="runs per case")
+    run_p.add_argument("--map-taxonomy", action="store_true",
+                       help="translate cases into the subject's declared event "
+                            "vocabulary, excluding those it does not cover")
     run_p.add_argument("--adaptive", action="store_true",
                        help="stop each case early once SPRT decides (Wald 1945)")
     run_p.add_argument("--format", choices=_FORMATS, default="rich")
@@ -50,6 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     cmp_p.add_argument("--token", default="dev-secret-key")
     cmp_p.add_argument("--adapter", choices=tuple(_ADAPTERS), default="threatsentinel",
                        help="subject contract: ThreatSentinel REST or minimal JSON")
+    cmp_p.add_argument("--map-taxonomy", action="store_true")
     cmp_p.add_argument("--runs", type=int, default=3)
 
     args = parser.parse_args(argv)
@@ -68,7 +72,8 @@ def _case_paths(args) -> list[Path]:
 async def _run(args) -> int:
     cases = load_cases(_case_paths(args))
     subject = _ADAPTERS[args.adapter](args.url, args.token)
-    card = await Auditor(subject, runs_per_case=args.runs, adaptive=args.adaptive).run(cases)
+    card = await Auditor(subject, runs_per_case=args.runs, adaptive=args.adaptive,
+                         map_taxonomy=args.map_taxonomy).run(cases)
     _emit(card, args.format, args.out)
     return 0 if card.passed else 1
 
@@ -92,7 +97,8 @@ async def _compare(args) -> int:
     for case in cases:
         row = [f"{case.name}\n[dim]{case.id}[/dim]"]
         for name, adapter in subjects:
-            card = await Auditor(adapter, runs_per_case=args.runs).run([case])
+            card = await Auditor(adapter, runs_per_case=args.runs,
+                                 map_taxonomy=args.map_taxonomy).run([case])
             cards[name][case.id] = card.passed
             row.append("[green]PASS[/green]" if card.passed else "[red]FAIL[/red]")
         table.add_row(*row)

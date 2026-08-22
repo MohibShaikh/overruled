@@ -132,3 +132,44 @@ class TestCaseLoading:
     def test_missing_cases_raises(self):
         with pytest.raises(FileNotFoundError):
             load_cases([Path("/nonexistent")])
+
+
+class TestScopeClassification:
+    """The mapping is a lever on the subject's score, so out-of-scope has
+    to be a real outcome rather than a nudge toward the nearest label."""
+
+    def test_no_declared_taxonomy_means_everything_is_native(self):
+        from overruled.subject import JSONAdapter, Scope
+
+        adapter = JSONAdapter("http://x")
+        scope, event = adapter.scope({"event_type": "anything_at_all"})
+        assert scope is Scope.NATIVE
+        assert event == {"event_type": "anything_at_all"}
+
+    def test_declared_type_passes_through_untouched(self):
+        from overruled.subject import Scope, ThreatSentinelAdapter
+
+        adapter = ThreatSentinelAdapter("http://x", "t")
+        scope, event = adapter.scope({"event_type": "login_anomaly", "payload": {"a": 1}})
+        assert scope is Scope.NATIVE
+        assert event["event_type"] == "login_anomaly"
+
+    def test_mapped_type_is_translated_without_mutating_the_case(self):
+        from overruled.subject import Scope, ThreatSentinelAdapter
+
+        adapter = ThreatSentinelAdapter("http://x", "t")
+        original = {"event_type": "network_anomaly", "source_ip": "203.0.113.66"}
+        scope, event = adapter.scope(original)
+        assert scope is Scope.MAPPED
+        assert event["event_type"] == "suspicious_ip"
+        assert event["source_ip"] == "203.0.113.66"
+        assert original["event_type"] == "network_anomaly"
+
+    def test_uncovered_type_is_excluded_not_coerced(self):
+        from overruled.subject import Scope, ThreatSentinelAdapter
+
+        adapter = ThreatSentinelAdapter("http://x", "t")
+        for event_type in ("endpoint_anomaly", "cloud_api", "data_exfiltration", "web_attack"):
+            scope, event = adapter.scope({"event_type": event_type})
+            assert scope is Scope.OUT_OF_SCOPE, event_type
+            assert event["event_type"] == event_type

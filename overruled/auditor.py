@@ -2,9 +2,9 @@
 
 from .checks import ALL_CHECKS
 from .checks.metamorphic import MetamorphicCheck, build_variant_event
-from .models import AgentArtifact, Case, CaseScore, Scorecard
+from .models import AgentArtifact, Case, CaseScore, ExcludedCase, Scorecard
 from .stats import sprt_decide
-from .subject import SubjectAdapter
+from .subject import Scope, SubjectAdapter
 
 
 class Auditor:
@@ -13,19 +13,34 @@ class Auditor:
         subject: SubjectAdapter,
         runs_per_case: int = 3,
         adaptive: bool = False,
+        map_taxonomy: bool = False,
     ):
         self.subject = subject
         self.runs = max(1, runs_per_case)
         self.adaptive = adaptive
+        self.map_taxonomy = map_taxonomy
 
     async def run(self, cases: list[Case]) -> Scorecard:
         card = Scorecard(subject=self.subject.name)
         for case in cases:
             expected = case.expected_verdict.value
-            artifacts = await self._investigate(case.event, expected=expected)
+            event = case.event
+            if self.map_taxonomy:
+                scope, event = self.subject.scope(case.event)
+                if scope is Scope.OUT_OF_SCOPE:
+                    card.excluded.append(ExcludedCase(
+                        case_id=case.id, case_name=case.name,
+                        event_type=str(case.event.get("event_type", "")),
+                    ))
+                    continue
+                if scope is Scope.MAPPED:
+                    card.mapped_case_ids.append(case.id)
+            artifacts = await self._investigate(event, expected=expected)
             variant_artifacts: list[AgentArtifact] = []
             if case.metamorphic:
                 variant_event = build_variant_event(case)
+                if self.map_taxonomy:
+                    _, variant_event = self.subject.scope(variant_event)
                 variant_artifacts = await self._investigate(
                     variant_event, expected=expected, offset=len(artifacts)
                 )

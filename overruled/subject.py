@@ -6,10 +6,19 @@ not special-case checks; they only translate.
 """
 
 from abc import ABC, abstractmethod
+from enum import StrEnum
 
 import httpx
 
 from .models import AgentArtifact
+
+
+class Scope(StrEnum):
+    """Whether a case is answerable in the subject's own vocabulary."""
+
+    NATIVE = "native"          # the case already speaks the subject's taxonomy
+    MAPPED = "mapped"          # translated faithfully into it
+    OUT_OF_SCOPE = "out_of_scope"  # no faithful translation exists
 
 
 class SubjectAdapter(ABC):
@@ -17,6 +26,33 @@ class SubjectAdapter(ABC):
 
     @abstractmethod
     async def investigate(self, event: dict, run_index: int = 0) -> AgentArtifact: ...
+
+    #: Event types the subject declares it handles. Empty means the subject
+    #: makes no such claim, so every case is answerable and nothing is
+    #: excluded. Declaring a taxonomy is what enables out-of-scope reporting.
+    NATIVE_EVENT_TYPES: frozenset[str] = frozenset()
+
+    #: Pack event type -> subject event type, for cases the subject's own
+    #: documented vocabulary genuinely covers. Anything absent is out of
+    #: scope; it is not coerced into the nearest label.
+    TAXONOMY: dict[str, str] = {}
+
+    def scope(self, event: dict) -> tuple[Scope, dict]:
+        """Classify a case against the subject's declared vocabulary.
+
+        Translating a case the subject never claimed to handle would
+        measure the mapping rather than the agent, so the third outcome
+        exists: say so and exclude it.
+        """
+        if not self.NATIVE_EVENT_TYPES:
+            return (Scope.NATIVE, event)
+        event_type = event.get("event_type")
+        if event_type in self.NATIVE_EVENT_TYPES:
+            return (Scope.NATIVE, event)
+        mapped = self.TAXONOMY.get(event_type)
+        if mapped is None:
+            return (Scope.OUT_OF_SCOPE, event)
+        return (Scope.MAPPED, {**event, "event_type": mapped})
 
 
 class JSONAdapter(SubjectAdapter):
@@ -62,6 +98,30 @@ class ThreatSentinelAdapter(SubjectAdapter):
     """
 
     CRITICAL_HIGH = {"critical", "high"}
+
+    #: ThreatSentinel README, "Supported event types".
+    NATIVE_EVENT_TYPES = frozenset({
+        "suspicious_ip", "suspicious_url", "malware_detection",
+        "login_anomaly", "ddos_signs", "phishing_attempt",
+    })
+
+    #: Written against those six published descriptions, before any rerun,
+    #: and deliberately sparse. "IPs showing malicious behavior" covers
+    #: beaconing and tunnelling; "social engineering, credential theft by
+    #: email" covers mail lures; "file-based threats, trojans, ransomware"
+    #: covers a detected malicious file.
+    #:
+    #: Everything else in the pack is left out of scope on purpose. LSASS
+    #: dumping is not a file reputation question, cloud key abuse is not an
+    #: IP reputation question, and SQL injection against your own login page
+    #: is not a "potentially malicious website". Filing them under the
+    #: nearest label would hand them to machinery that cannot evaluate them
+    #: and would score the mapping, not the agent.
+    TAXONOMY = {
+        "network_anomaly": "suspicious_ip",
+        "email_anomaly": "phishing_attempt",
+        "file_event": "malware_detection",
+    }
 
     def __init__(self, base_url: str, token: str):
         self.name = f"threatsentinel@{base_url}"

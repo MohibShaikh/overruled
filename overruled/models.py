@@ -91,10 +91,25 @@ class CaseScore(BaseModel):
         return [r for r in self.results if not r.passed]
 
 
+class ExcludedCase(BaseModel):
+    """A case the subject never claimed to be able to answer.
+
+    Excluded, never coerced into the nearest label, and always reported:
+    a score is only honest alongside what it declined to grade.
+    """
+
+    case_id: str
+    case_name: str
+    event_type: str = ""
+    reason: str = "outside the subject's declared taxonomy"
+
+
 class Scorecard(BaseModel):
     subject: str
     started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     cases: list[CaseScore] = Field(default_factory=list)
+    excluded: list[ExcludedCase] = Field(default_factory=list)
+    mapped_case_ids: list[str] = Field(default_factory=list)
 
     @property
     def passed(self) -> bool:
