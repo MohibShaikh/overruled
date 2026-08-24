@@ -121,4 +121,11 @@ class MissedEvidenceCheck:
         )
 
     def _surfaced(self, ioc: str, artifact: AgentArtifact) -> bool:
-        return any(ioc in cited or cited in ioc for cited in artifact.cited_iocs)
+        """Same containment semantics as OV-002's grounding.
+
+        A citation that wraps the indicator in context (port, scheme,
+        prefix) surfaces it; a truncated citation is a different
+        indicator and never covers the planted one. If OV-002 calls a
+        citation fabricated, OV-003 must not call it coverage.
+        """
+        return any(_contains_token(cited, ioc) for cited in artifact.cited_iocs)

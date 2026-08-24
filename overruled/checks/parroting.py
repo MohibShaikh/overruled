@@ -20,6 +20,7 @@ stays free of models.
 """
 
 from ..models import AgentArtifact, Case, CheckResult, Severity
+from .evidence import _contains_token
 
 
 class AlertParrotingCheck:
@@ -69,4 +70,4 @@ class AlertParrotingCheck:
         )
 
     def _surfaced(self, fact: str, artifact: AgentArtifact) -> bool:
-        return any(fact in cited or cited in fact for cited in artifact.cited_iocs)
+        return any(_contains_token(cited, fact) for cited in artifact.cited_iocs)
