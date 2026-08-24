@@ -132,3 +132,28 @@ def test_markdown_names_the_tool_and_every_case():
     assert text.startswith("# overruled scorecard:")
     assert "case-ok-001" in text and "case-bad-001" in text
     assert "Brier" in text
+
+
+def test_nothing_graded_is_not_a_pass():
+    """A subject could otherwise clear the gate by declaring a taxonomy
+    that covers none of the pack: zero cases, vacuously all-passing."""
+    from overruled.models import ExcludedCase
+
+    card = Scorecard(subject="narrow", cases=[], excluded=[
+        ExcludedCase(case_id="case-x", case_name="x", event_type="endpoint_anomaly"),
+    ])
+    assert not card.passed
+
+
+def test_junit_counts_excluded_cases_as_skipped():
+    from overruled.models import ExcludedCase
+
+    card = _card()
+    card.excluded.append(ExcludedCase(case_id="case-skip-001", case_name="skipped",
+                                      event_type="cloud_api"))
+    suite = ElementTree.fromstring(to_junit(card))
+    assert suite.get("tests") == "3"
+    assert suite.get("skipped") == "1"
+    skipped = [tc for tc in suite.findall("testcase") if tc.find("skipped") is not None]
+    assert len(skipped) == 1
+    assert "cloud_api" in skipped[0].find("skipped").get("message")

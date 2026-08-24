@@ -125,7 +125,13 @@ class Scorecard(BaseModel):
 
     @property
     def passed(self) -> bool:
-        return all(c.passed for c in self.cases)
+        """A subject passes by being graded and surviving, not by dodging.
+
+        An empty scorecard is vacuously all-passing, which would let a
+        subject clear the gate by declaring a taxonomy that covers none
+        of the pack. Nothing graded is not a pass.
+        """
+        return bool(self.cases) and all(c.passed for c in self.cases)
 
     @property
     def total_failures(self) -> int:

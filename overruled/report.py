@@ -193,8 +193,9 @@ def to_junit(card: Scorecard) -> str:
     """JUnit XML so any CI system can gate on overruled natively."""
     suite = Element("testsuite", {
         "name": f"overruled:{card.subject}",
-        "tests": str(len(card.cases)),
+        "tests": str(len(card.cases) + len(card.excluded)),
         "failures": str(sum(1 for c in card.cases if not c.passed)),
+        "skipped": str(len(card.excluded)),
     })
     props = SubElement(suite, "properties")
     SubElement(props, "property", {
@@ -211,6 +212,11 @@ def to_junit(card: Scorecard) -> str:
             })
             failure.text = "\n".join(f"{f.rule_id} [{f.severity.value}] {f.detail}"
                                      for f in c.failures)
+    for e in card.excluded:
+        tc = SubElement(suite, "testcase", {
+            "classname": card.subject, "name": f"{e.case_id} (not graded)",
+        })
+        SubElement(tc, "skipped", {"message": f"{e.reason}: {e.event_type}"})
     return tostring(suite, encoding="unicode")
 
 
@@ -244,8 +250,12 @@ def print_card(card: Scorecard) -> None:
         )
 
     console.print(table)
-    verdict = "[green]SUBJECT PASSES[/green]" if card.passed else \
-        f"[red]SUBJECT FAILS[/red] ({card.total_failures} finding(s))"
+    if not card.cases:
+        verdict = "[yellow]NOT GRADED[/yellow] (no case survived scoping; nothing was measured)"
+    elif card.passed:
+        verdict = "[green]SUBJECT PASSES[/green]"
+    else:
+        verdict = f"[red]SUBJECT FAILS[/red] ({card.total_failures} finding(s))"
     console.print(verdict)
     console.print(_accuracy_line(card))
     errors = _errors_line(card)
