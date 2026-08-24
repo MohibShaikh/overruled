@@ -1,8 +1,10 @@
 """Orchestrator: run cases against a subject, apply checks, emit a scorecard."""
 
+import httpx
+
 from .checks import ALL_CHECKS
 from .checks.metamorphic import MetamorphicCheck, build_variant_event
-from .models import AgentArtifact, Case, CaseScore, ExcludedCase, Scorecard
+from .models import ERROR_VERDICT, AgentArtifact, Case, CaseScore, ExcludedCase, Scorecard
 from .stats import sprt_decide
 from .subject import Scope, SubjectAdapter
 
@@ -60,12 +62,18 @@ class Auditor:
         """
         artifacts: list[AgentArtifact] = []
         for i in range(self.runs):
-            artifacts.append(await self.subject.investigate(event, i + offset))
+            try:
+                artifact = await self.subject.investigate(event, i + offset)
+            except (httpx.HTTPError, TimeoutError):
+                artifact = AgentArtifact(verdict=ERROR_VERDICT, run_index=i + offset)
+            artifacts.append(artifact)
             if self.adaptive and i + 1 < self.runs:
-                correct = sum(1 for a in artifacts if a.verdict == expected)
-                decision = sprt_decide(correct, len(artifacts))
-                if decision is not None:
-                    break
+                gradable = [a for a in artifacts if a.verdict != ERROR_VERDICT]
+                if gradable:
+                    correct = sum(1 for a in gradable if a.verdict == expected)
+                    decision = sprt_decide(correct, len(gradable))
+                    if decision is not None:
+                        break
         return artifacts
 
     def _score(
@@ -80,6 +88,7 @@ class Auditor:
             results.append(metamorphic)
         expected = case.expected_verdict.value
         correct = sum(1 for a in artifacts if a.verdict == expected)
+        error_runs = sum(1 for a in artifacts if a.verdict == ERROR_VERDICT)
         return CaseScore(
             case_id=case.id,
             case_name=case.name,
@@ -90,4 +99,5 @@ class Auditor:
             expected_verdict=expected,
             rulings=[a.verdict or "none" for a in artifacts],
             confidences=[a.confidence for a in artifacts],
+            error_runs=error_runs,
         )

@@ -8,6 +8,7 @@ import math
 from hypothesis import given
 from hypothesis import strategies as st
 
+from overruled.models import ERROR_VERDICT, CaseScore, Scorecard
 from overruled.stats import (
     brier_score,
     cohens_kappa,
@@ -115,3 +116,32 @@ class TestExpectedLoss:
     def test_nonnegative_and_scaling(self, fn, fp, total):
         loss = expected_loss(fn, fp, per=100, total_runs=total)
         assert loss >= 0.0
+
+
+class TestErrorExclusion:
+    """Error artifacts are infrastructure noise: they change the run
+    counts but never the estimates."""
+
+    @given(
+        st.lists(st.sampled_from(["true_positive", "false_positive"]),
+                 min_size=1, max_size=20),
+        st.integers(0, 5),
+    )
+    def test_accuracy_and_pairs_ignore_errors(self, rulings, errors):
+        card = Scorecard(subject="s", cases=[CaseScore(
+            case_id="c",
+            case_name="c",
+            runs=len(rulings) + errors,
+            results=[],
+            passed=True,
+            verdict_correct_runs=sum(1 for r in rulings if r == "true_positive"),
+            expected_verdict="true_positive",
+            rulings=rulings + [ERROR_VERDICT] * errors,
+            confidences=[None] * (len(rulings) + errors),
+            error_runs=errors,
+        )])
+        correct, total = card.accuracy
+        assert total == len(rulings)
+        assert correct == sum(1 for r in rulings if r == "true_positive")
+        assert len(card.ruling_pairs) == len(rulings)
+        assert all(actual != ERROR_VERDICT for _, actual in card.ruling_pairs)

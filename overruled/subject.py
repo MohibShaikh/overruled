@@ -13,6 +13,28 @@ import httpx
 from .models import AgentArtifact
 
 
+async def _retry(client: httpx.AsyncClient, method: str, url: str,
+                 **kwargs) -> httpx.Response:
+    """Send a request, retrying transport errors and 5xxs twice.
+
+    A vendor API blip must not look like the agent botching the case.
+    Exhausted retries return the last response (or re-raise) so the
+    caller records an error artifact on its own terms.
+    """
+    import asyncio
+
+    for _ in range(2):
+        try:
+            response = await client.request(method, url, **kwargs)
+        except httpx.TransportError:
+            pass
+        else:
+            if response.status_code < 500:
+                return response
+        await asyncio.sleep(0.5)
+    return await client.request(method, url, **kwargs)
+
+
 class Scope(StrEnum):
     """Whether a case is answerable in the subject's own vocabulary."""
 
@@ -73,7 +95,10 @@ class JSONAdapter(SubjectAdapter):
         )
 
     async def investigate(self, event: dict, run_index: int = 0) -> AgentArtifact:
-        response = await self.client.post("/", json={"event_data": event})
+        try:
+            response = await _retry(self.client, "POST", "/", json={"event_data": event})
+        except httpx.HTTPError:
+            return AgentArtifact(verdict="error", run_index=run_index)
         if response.status_code != 200:
             return AgentArtifact(verdict="error", run_index=run_index)
         try:
@@ -136,20 +161,34 @@ class ThreatSentinelAdapter(SubjectAdapter):
         import time
 
         started = time.perf_counter()
-        created = await self.client.post("/api/v1/investigations/", json={"event_data": event})
-        created.raise_for_status()
-        inv_id = created.json()["investigation_id"]
-
-        status = await self._wait_for(inv_id)
-        if status.get("status") == "failed":
-            return AgentArtifact(
-                verdict="error", run_index=run_index,
-                raw={"investigation_id": inv_id, "status": "failed"},
+        try:
+            created = await _retry(
+                self.client, "POST", "/api/v1/investigations/",
+                json={"event_data": event},
             )
-
-        result = await self.client.get(f"/api/v1/investigations/{inv_id}/result")
-        result.raise_for_status()
-        body = result.json()
+            if created.is_error:
+                return AgentArtifact(
+                    verdict="error", run_index=run_index,
+                    raw={"status_code": created.status_code},
+                )
+            inv_id = created.json()["investigation_id"]
+            status = await self._wait_for(inv_id)
+            if status.get("status") == "failed":
+                return AgentArtifact(
+                    verdict="error", run_index=run_index,
+                    raw={"investigation_id": inv_id, "status": "failed"},
+                )
+            result = await _retry(
+                self.client, "GET", f"/api/v1/investigations/{inv_id}/result",
+            )
+            if result.is_error:
+                return AgentArtifact(
+                    verdict="error", run_index=run_index,
+                    raw={"investigation_id": inv_id, "status_code": result.status_code},
+                )
+            body = result.json()
+        except (httpx.HTTPError, TimeoutError, ValueError, KeyError):
+            return AgentArtifact(verdict="error", run_index=run_index)
 
         return self._to_artifact(body, inv_id, run_index,
                                  int((time.perf_counter() - started) * 1000))
@@ -160,8 +199,12 @@ class ThreatSentinelAdapter(SubjectAdapter):
 
         deadline = time.monotonic() + timeout_s
         while time.monotonic() < deadline:
-            response = await self.client.get(f"/api/v1/investigations/{inv_id}")
-            response.raise_for_status()
+            response = await _retry(self.client, "GET", f"/api/v1/investigations/{inv_id}")
+            if response.is_error:
+                raise httpx.HTTPStatusError(
+                    f"{response.status_code} polling investigation {inv_id}",
+                    request=response.request, response=response,
+                )
             body = response.json()
             if body.get("status") in ("completed", "failed", "pending_human_review"):
                 return body
@@ -199,6 +242,12 @@ class ThreatSentinelAdapter(SubjectAdapter):
         )
 
     def _extract_iocs(self, body: dict) -> list[str]:
+        """Citations come only from indicators the subject produced.
+
+        The event's own headline fields are inputs the subject was
+        handed; counting them as cited evidence would credit parroting
+        as investigation.
+        """
         iocs: list[str] = []
         intel = body.get("intelligence_data") or {}
         for source_result in intel.values() if isinstance(intel, dict) else []:
@@ -206,9 +255,5 @@ class ThreatSentinelAdapter(SubjectAdapter):
             for ind in indicators:
                 if isinstance(ind, str):
                     iocs.append(ind)
-        event = body.get("event_data") or {}
-        for key in ("source_ip", "target_ip", "url", "file_hash"):
-            if event.get(key):
-                iocs.append(str(event[key]))
         seen: set[str] = set()
         return [i for i in iocs if not (i in seen or seen.add(i))]

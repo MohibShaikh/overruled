@@ -9,7 +9,7 @@ Wilson score intervals and per-case reliability as pass^k bounds
 import json
 from xml.etree.ElementTree import Element, SubElement, tostring
 
-from .models import Scorecard, Severity
+from .models import ERROR_VERDICT, Scorecard, Severity
 from .stats import (
     brier_score,
     cohens_kappa,
@@ -81,13 +81,33 @@ def _calibration_line(card: Scorecard) -> str | None:
     pairs = []
     for c in card.cases:
         for conf, ruling in zip(c.confidences, c.rulings, strict=True):
-            if conf is None:
+            if conf is None or ruling == ERROR_VERDICT:
                 continue
             pairs.append((conf, ruling == c.expected_verdict))
     score = brier_score(pairs)
     if score is None:
         return None
     return f"Confidence calibration (Brier): {score:.3f} over {len(pairs)} scored runs"
+
+
+def _errors_line(card: Scorecard) -> str | None:
+    """Infrastructure errors, counted separately from the agent's record."""
+    if not card.total_errors:
+        return None
+    incomplete = sum(1 for c in card.cases if c.incomplete)
+    parts = [
+        f"{card.total_errors} run(s) ended in infrastructure errors, "
+        "excluded from accuracy and calibration"
+    ]
+    if incomplete:
+        parts.append(f"{incomplete} case(s) incomplete (majority of runs errored)")
+    return ", ".join(parts)
+
+
+def _case_mark(case) -> str:
+    if case.incomplete:
+        return "INCOMPLETE"
+    return "PASS" if case.passed else "FAIL"
 
 
 def _reliability_line(case) -> str:
@@ -109,8 +129,11 @@ def to_markdown(card: Scorecard) -> str:
     scope = _scope_line(card)
     if scope:
         lines.extend([scope, ""])
+    errors = _errors_line(card)
+    if errors:
+        lines.extend([errors, ""])
     for case in card.cases:
-        mark = "PASS" if case.passed else "FAIL"
+        mark = _case_mark(case)
         reliability = _reliability_line(case)
         suffix = f", {reliability}" if reliability else ""
         lines.append(
@@ -144,7 +167,11 @@ def to_sarif(card: Scorecard) -> str:
                 "ruleId": r.rule_id,
                 "level": _SARIF_LEVEL[r.severity],
                 "message": {"text": f"{c.case_name}: {r.detail}"},
-                "properties": {"caseId": c.case_id, "runs": c.runs},
+                "properties": {
+                    "caseId": c.case_id,
+                    "runs": c.runs,
+                    "errorRuns": c.error_runs,
+                },
             })
     sarif = {
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
@@ -155,6 +182,7 @@ def to_sarif(card: Scorecard) -> str:
                 "informationUri": "https://github.com/MohibShaikh/overruled",
                 "rules": list(rules.values()),
             }},
+            "properties": {"errorRuns": card.total_errors},
             "results": results,
         }],
     }
@@ -167,6 +195,10 @@ def to_junit(card: Scorecard) -> str:
         "name": f"overruled:{card.subject}",
         "tests": str(len(card.cases)),
         "failures": str(sum(1 for c in card.cases if not c.passed)),
+    })
+    props = SubElement(suite, "properties")
+    SubElement(props, "property", {
+        "name": "errorRuns", "value": str(card.total_errors),
     })
     for c in card.cases:
         tc = SubElement(suite, "testcase", {
@@ -202,10 +234,12 @@ def print_card(card: Scorecard) -> None:
                 color = "red" if f.severity == Severity.CRITICAL else "yellow"
                 parts.append(f"[{color}]{f.rule_id}[/{color}] {f.check}: {f.detail}")
             findings = "\n".join(parts)
+        mark = _case_mark(case)
+        color = "green" if mark == "PASS" else "yellow" if mark == "INCOMPLETE" else "red"
         table.add_row(
             f"{case.case_name}\n[dim]{case.case_id}[/dim]",
             str(case.runs),
-            "[green]PASS[/green]" if case.passed else "[red]FAIL[/red]",
+            f"[{color}]{mark}[/{color}]",
             findings,
         )
 
@@ -214,6 +248,9 @@ def print_card(card: Scorecard) -> None:
         f"[red]SUBJECT FAILS[/red] ({card.total_failures} finding(s))"
     console.print(verdict)
     console.print(_accuracy_line(card))
+    errors = _errors_line(card)
+    if errors:
+        console.print(errors)
     scope = _scope_line(card)
     if scope:
         console.print(scope)

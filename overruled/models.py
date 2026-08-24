@@ -13,6 +13,12 @@ class ExpectedVerdict(StrEnum):
     ESCALATE = "escalate"
 
 
+#: Artifact marker for a run that never produced a ruling: transport
+#: failure, 5xx, unreadable body, timeout. Excluded from every estimate
+#: because infrastructure noise must not look like the agent's fault.
+ERROR_VERDICT = "error"
+
+
 class Severity(StrEnum):
     INFO = "info"
     MINOR = "minor"
@@ -85,10 +91,16 @@ class CaseScore(BaseModel):
     expected_verdict: str = ""
     rulings: list[str] = Field(default_factory=list)
     confidences: list[float | None] = Field(default_factory=list)
+    error_runs: int = 0
 
     @property
     def failures(self) -> list[CheckResult]:
         return [r for r in self.results if not r.passed]
+
+    @property
+    def incomplete(self) -> bool:
+        """Majority of runs hit infrastructure errors, not the agent."""
+        return self.error_runs * 2 > self.runs
 
 
 class ExcludedCase(BaseModel):
@@ -120,18 +132,28 @@ class Scorecard(BaseModel):
         return sum(len(c.failures) for c in self.cases)
 
     @property
+    def total_errors(self) -> int:
+        return sum(c.error_runs for c in self.cases)
+
+    @property
     def accuracy(self) -> tuple[int, int]:
-        """Verdict-correct runs over total runs across all cases."""
+        """Verdict-correct runs over gradable runs; error runs excluded.
+
+        A transport failure says nothing about the agent, so it counts
+        toward neither side.
+        """
         correct = sum(c.verdict_correct_runs for c in self.cases)
-        total = sum(c.runs for c in self.cases)
+        total = sum(c.runs - c.error_runs for c in self.cases)
         return (correct, total)
 
     @property
     def ruling_pairs(self) -> list[tuple[str, str]]:
-        """(expected, actual) per run, for kappa and loss math."""
+        """(expected, actual) per gradable run, for kappa and loss math."""
         pairs = []
         for c in self.cases:
-            pairs.extend((c.expected_verdict, r) for r in c.rulings)
+            pairs.extend(
+                (c.expected_verdict, r) for r in c.rulings if r != ERROR_VERDICT
+            )
         return pairs
 
     @property
