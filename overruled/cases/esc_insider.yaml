@@ -15,7 +15,7 @@ event:
     repo: payments-core
     access_level: read
     prior_90d_touches: 0
-    usb_device_serial: 0x0900c3
+    usb_device_serial: "0x0900c3"
     files_copied_mb: 640
     resignation_notice_days_ago: 30
     exfil_to_external_network_observed: false

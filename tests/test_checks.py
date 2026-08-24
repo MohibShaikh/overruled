@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from overruled.cases import bundled_cases, load_cases
+from overruled.cases import bundled_cases, load_case, load_cases
 from overruled.checks.consistency import ConsistencyCheck
 from overruled.checks.evidence import FabricatedEvidenceCheck, MissedEvidenceCheck
 from overruled.checks.verdict import VerdictCheck
@@ -106,6 +106,23 @@ class TestMissedEvidenceCheck:
         case = make_case(evidence=[EvidenceItem(ioc="10.0.0.1", must_surface=False)])
         assert MissedEvidenceCheck().run(case, [AgentArtifact()]).passed
 
+    @pytest.mark.parametrize("cited, surfacing", [
+        ("203.0.113.66", True),          # exact
+        ("203.0.113.66:445", True),      # wraps the indicator in context
+        ("http://203.0.113.66/x", True),
+        ("203.0.113.6", False),          # truncation is a different indicator
+        ("203.0.113.660", False),
+        ("198.51.100.9", False),         # unrelated
+        ([], False),
+    ])
+    def test_surfacing_matches_grounding_semantics(self, cited, surfacing):
+        """OV-002 and OV-003 must never disagree about one citation:
+        what grounding calls fabricated, surfacing cannot call coverage."""
+        citations = cited if isinstance(cited, list) else [cited]
+        result = MissedEvidenceCheck().run(
+            make_case(), [AgentArtifact(cited_iocs=citations)])
+        assert result.passed is surfacing
+
 
 class TestConsistencyCheck:
     def test_fails_on_flip_flop(self):
@@ -132,6 +149,26 @@ class TestCaseLoading:
     def test_missing_cases_raises(self):
         with pytest.raises(FileNotFoundError):
             load_cases([Path("/nonexistent")])
+
+    def test_unquoted_hex_evidence_is_rejected_at_load_time(self, tmp_path):
+        """0x0900c3 ships as YAML integer 590019 while the planted IOC
+        stays a string: the agent can never surface it and every honest
+        subject eats a wrong OV-003 conviction."""
+        case_file = tmp_path / "case-hex.yaml"
+        case_file.write_text(
+            "id: case-hex-001\n"
+            "name: hex trap\n"
+            "expected_verdict: true_positive\n"
+            "event:\n"
+            "  event_type: file_event\n"
+            "  payload:\n"
+            "    usb_device_serial: 0x0900c3\n"
+            "evidence:\n"
+            '  - ioc: "0x0900c3"\n'
+            "    kind: device_id\n"
+        )
+        with pytest.raises(ValueError, match="quote it"):
+            load_case(case_file)
 
 
 class TestScopeClassification:

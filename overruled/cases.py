@@ -24,6 +24,7 @@ def load_case(path: Path) -> Case:
         data = yaml.safe_load(f)
     case = Case.model_validate(data)
     _validate_discoverable(case)
+    _validate_evidence(case)
     return case
 
 
@@ -47,6 +48,24 @@ def _validate_discoverable(case: Case) -> None:
             raise ValueError(
                 f"{case.id}: discoverable {item.ioc!r} is a headline field, "
                 f"move it into payload context"
+            )
+
+
+def _validate_evidence(case: Case) -> None:
+    """Planted evidence has to be recoverable from what the agent sees.
+
+    YAML reads 0x0900c3 as the integer 590019, so an unquoted scalar in
+    the event leaves the graded IOC unsurfaceable by any honest agent:
+    a guaranteed wrong conviction hiding inside an otherwise valid
+    case. Reject at load time, not in a breach postmortem.
+    """
+    event_str = json.dumps(case.event)
+    for item in case.evidence:
+        if item.ioc not in event_str:
+            raise ValueError(
+                f"{case.id}: planted evidence {item.ioc!r} never appears "
+                f"in the event (an unquoted scalar like 0x0900c3 parses "
+                f"as an integer; quote it)"
             )
 
 
