@@ -111,10 +111,12 @@ def _case_mark(case) -> str:
 
 
 def _reliability_line(case) -> str:
-    if case.runs < 2:
-        return ""
-    low, high = verdict_flip_probability(case.runs, case.verdict_correct_runs)
-    return f"pass^{case.runs} in [{low:.2f}, {high:.2f}]"
+    gradable = case.runs - case.error_runs
+    observed = f"observed {case.verdict_correct_runs}/{gradable} correct"
+    if case.runs < 2 or gradable == 0:
+        return observed
+    low, high = verdict_flip_probability(gradable, case.verdict_correct_runs)
+    return f"pass^{gradable} in [{low:.2f}, {high:.2f}] assuming independence, {observed}"
 
 
 def _provenance_line(card: Scorecard) -> str | None:
@@ -131,12 +133,16 @@ def _provenance_line(card: Scorecard) -> str | None:
 
 
 def to_markdown(card: Scorecard) -> str:
+    if not card.passed:
+        outcome = f"{card.total_failures} finding(s)"
+    elif card.total_failures:
+        outcome = f"PASSED ({card.total_failures} minor)"
+    else:
+        outcome = "ALL PASSED"
     lines = [
         f"# overruled scorecard: {card.subject}",
         "",
-        f"Ran {len(card.cases)} cases. "
-        f"{'ALL PASSED' if card.passed else f'{card.total_failures} finding(s)'}. "
-        f"{_accuracy_line(card)}",
+        f"Ran {len(card.cases)} cases. {outcome}. {_accuracy_line(card)}",
         "",
     ]
     provenance = _provenance_line(card)
@@ -277,7 +283,12 @@ def print_card(card: Scorecard) -> None:
     if not card.cases:
         verdict = "[yellow]NOT GRADED[/yellow] (no case survived scoping; nothing was measured)"
     elif card.passed:
-        verdict = "[green]SUBJECT PASSES[/green]"
+        if card.total_failures:
+            verdict = (f"[green]SUBJECT PASSES[/green] "
+                       f"({card.total_failures} minor finding(s), "
+                       f"--strict fails on these)")
+        else:
+            verdict = "[green]SUBJECT PASSES[/green]"
     else:
         verdict = f"[red]SUBJECT FAILS[/red] ({card.total_failures} finding(s))"
     console.print(verdict)

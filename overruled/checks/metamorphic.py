@@ -5,6 +5,8 @@ event is anchored to surface features. Declared per case because only
 the case author knows which transforms preserve ground truth.
 """
 
+import json
+
 from ..metamorphic import apply_transforms
 from ..models import AgentArtifact, Case, CheckResult, Severity
 
@@ -26,17 +28,36 @@ class MetamorphicCheck:
         base_rulings = {a.verdict or "none" for a in artifacts}
         variant_rulings = {a.verdict or "none" for a in transformed_artifacts}
         stable = base_rulings & variant_rulings
-        if stable and base_rulings <= variant_rulings and variant_rulings <= base_rulings:
+        if not (stable and base_rulings <= variant_rulings
+                and variant_rulings <= base_rulings):
             return CheckResult(
-                rule_id=self.rule_id, check=self.check, passed=True,
-                detail=f"ruling invariant under {case.metamorphic}",
+                rule_id=self.rule_id, check=self.check, passed=False,
+                severity=Severity.MAJOR,
+                detail=f"verdict flipped under {case.metamorphic}: "
+                       f"base {sorted(base_rulings)} vs transformed "
+                       f"{sorted(variant_rulings)}",
+            )
+        # Compared as serialized JSON, not dicts: reorder_payload works
+        # precisely by changing what the agent sees on the wire, which
+        # dict equality cannot see. Fully deterministic off the case.
+        def changes_anything(transform: str) -> bool:
+            variant = apply_transforms(case.event, [transform])
+            return json.dumps(variant) != json.dumps(case.event)
+
+        no_ops = [t for t in case.metamorphic if not changes_anything(t)]
+        if no_ops:
+            # An invariance that changed nothing was never tested. The
+            # author declared a transform their own event ignores.
+            return CheckResult(
+                rule_id=self.rule_id, check=self.check, passed=False,
+                severity=Severity.MINOR,
+                detail=f"ruling invariant under {case.metamorphic}, but "
+                       f"{no_ops} change nothing in this event; declare "
+                       f"transforms that touch ground-truth-bearing fields",
             )
         return CheckResult(
-            rule_id=self.rule_id, check=self.check, passed=False,
-            severity=Severity.MAJOR,
-            detail=f"verdict flipped under {case.metamorphic}: "
-                   f"base {sorted(base_rulings)} vs transformed "
-                   f"{sorted(variant_rulings)}",
+            rule_id=self.rule_id, check=self.check, passed=True,
+            detail=f"ruling invariant under {case.metamorphic}",
         )
 
 

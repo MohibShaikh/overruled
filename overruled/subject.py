@@ -122,7 +122,7 @@ class ThreatSentinelAdapter(SubjectAdapter):
     indicators in the reasoning and intel data.
     """
 
-    CRITICAL_HIGH = {"critical", "high"}
+    #: Default mapping lives on the constructor; see tp_levels there.
 
     #: ThreatSentinel README, "Supported event types".
     NATIVE_EVENT_TYPES = frozenset({
@@ -148,8 +148,13 @@ class ThreatSentinelAdapter(SubjectAdapter):
         "file_event": "malware_detection",
     }
 
-    def __init__(self, base_url: str, token: str):
-        self.name = f"threatsentinel@{base_url}"
+    def __init__(self, base_url: str, token: str,
+                 tp_levels: tuple[str, ...] = ("critical", "high")):
+        self.tp_levels = {level.lower() for level in tp_levels}
+        # The scorecard states its lens: which risk levels count as a
+        # true positive is a scoring decision, not a fact.
+        self.name = (f"threatsentinel@{base_url.rstrip('/')}"
+                     f" [tp={'+'.join(sorted(self.tp_levels))}]")
         self.base_url = base_url.rstrip("/")
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
@@ -218,9 +223,12 @@ class ThreatSentinelAdapter(SubjectAdapter):
         escalated = bool(body.get("requires_human_review")) or \
             body.get("status") == "pending_human_review"
 
-        if escalated:
+        explicit = body.get("verdict")
+        if explicit in ("true_positive", "false_positive", "escalate"):
+            verdict = explicit
+        elif escalated:
             verdict = "escalate"
-        elif level in self.CRITICAL_HIGH:
+        elif level in self.tp_levels:
             verdict = "true_positive"
         else:
             verdict = "false_positive"

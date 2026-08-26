@@ -4,7 +4,15 @@ import httpx
 
 from .checks import ALL_CHECKS
 from .checks.metamorphic import MetamorphicCheck, build_variant_event
-from .models import ERROR_VERDICT, AgentArtifact, Case, CaseScore, ExcludedCase, Scorecard
+from .models import (
+    ERROR_VERDICT,
+    AgentArtifact,
+    Case,
+    CaseScore,
+    ExcludedCase,
+    Scorecard,
+    Severity,
+)
 from .stats import sprt_decide
 from .subject import Scope, SubjectAdapter
 
@@ -18,6 +26,7 @@ class Auditor:
         map_taxonomy: bool = False,
         tool_version: str = "",
         pack_fingerprint: str = "",
+        strict: bool = False,
     ):
         self.subject = subject
         self.runs = max(1, runs_per_case)
@@ -25,6 +34,7 @@ class Auditor:
         self.map_taxonomy = map_taxonomy
         self.tool_version = tool_version
         self.pack_fingerprint = pack_fingerprint
+        self.strict = strict
 
     async def run(self, cases: list[Case]) -> Scorecard:
         card = Scorecard(
@@ -97,12 +107,18 @@ class Auditor:
         expected = case.expected_verdict.value
         correct = sum(1 for a in artifacts if a.verdict == expected)
         error_runs = sum(1 for a in artifacts if a.verdict == ERROR_VERDICT)
+        # MINOR findings are warnings by default; --strict fails the
+        # gate on them. Every finding stays visible either way.
+        blocking = [
+            r for r in results
+            if not r.passed and (self.strict or r.severity != Severity.MINOR)
+        ]
         return CaseScore(
             case_id=case.id,
             case_name=case.name,
             runs=len(artifacts),
             results=results,
-            passed=all(r.passed for r in results),
+            passed=not blocking,
             verdict_correct_runs=correct,
             expected_verdict=expected,
             rulings=[a.verdict or "none" for a in artifacts],

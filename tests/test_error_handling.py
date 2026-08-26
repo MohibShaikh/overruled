@@ -102,3 +102,29 @@ def test_extract_iocs_ignores_the_event_it_was_handed():
     }
     iocs = ThreatSentinelAdapter("http://mock", "dev-secret-key")._extract_iocs(body)
     assert iocs == ["198.51.100.7", "evil.example.top"]
+
+
+class TestVerdictMapping:
+    BODY = {
+        "status": "completed",
+        "risk_assessment": {"risk_level": "medium", "risk_score": 55,
+                            "confidence": 0.8},
+    }
+
+    def test_default_levels_map_medium_to_false_positive(self):
+        adapter = ThreatSentinelAdapter("http://mock", "t")
+        artifact = adapter._to_artifact(self.BODY, "inv-1", 0, 10)
+        assert artifact.verdict == "false_positive"
+
+    def test_custom_levels_change_the_lens_and_the_name_states_it(self):
+        adapter = ThreatSentinelAdapter("http://mock", "t",
+                                        tp_levels=("medium",))
+        artifact = adapter._to_artifact(self.BODY, "inv-1", 0, 10)
+        assert artifact.verdict == "true_positive"
+        assert "tp=medium" in adapter.name
+
+    def test_explicit_verdict_field_wins_over_inference(self):
+        body = {**self.BODY, "verdict": "escalate"}
+        adapter = ThreatSentinelAdapter("http://mock", "t")
+        artifact = adapter._to_artifact(body, "inv-1", 0, 10)
+        assert artifact.verdict == "escalate"

@@ -37,13 +37,34 @@ def swap_source_ip(event: dict) -> dict:
     return out
 
 
+_USER_KEY_RE = re.compile(r"(?:^|_)(user|account|actor)(?:_name)?s?$",
+                          re.IGNORECASE)
+
+
 def rename_user(event: dict) -> dict:
-    """Swap user/account identifiers for neutral ones."""
+    """Swap user/account identifiers for neutral ones.
+
+    Recurses through the whole event for keys ending in user, account,
+    or actor (plural allowed). Free text is left alone, so a username
+    buried inside a prose field survives the transform; scope is
+    documented here rather than claimed complete.
+    """
     out = _deep_copy(event)
-    keys = ("user", "target_user", "source_user", "actor_account")
-    for key in keys:
-        if isinstance(out.get(key), str):
-            out[key] = _SUBSTITUTION_USERS[_hash_index(out[key], len(_SUBSTITUTION_USERS))]
+
+    def walk(node) -> None:
+        if isinstance(node, dict):
+            for key, val in node.items():
+                if isinstance(val, str) and _USER_KEY_RE.search(key):
+                    node[key] = _SUBSTITUTION_USERS[
+                        _hash_index(val, len(_SUBSTITUTION_USERS))
+                    ]
+                else:
+                    walk(val)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    walk(out)
     return out
 
 

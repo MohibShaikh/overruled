@@ -96,6 +96,12 @@ Gate a pipeline (JUnit for CI dashboards):
 overruled run --url "$AGENT_URL" --format junit --out overruled.xml
 ```
 
+The default gate fails on CRITICAL and MAJOR findings; MINOR warnings
+are reported but do not fail it. Pass `--strict` to fail on any finding.
+For ThreatSentinel subjects, `--tp-levels critical,high` controls which
+risk levels map to true_positive, and the scorecard records the mapping
+it used.
+
 Findings into existing dashboards (SARIF):
 
 ```

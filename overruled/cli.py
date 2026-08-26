@@ -37,12 +37,18 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument("--token", default="dev-secret-key", help="bearer token for the subject")
     run_p.add_argument("--adapter", choices=tuple(_ADAPTERS), default="threatsentinel",
                        help="subject contract: ThreatSentinel REST or minimal JSON")
+    run_p.add_argument("--tp-levels", default="critical,high",
+                       help="ThreatSentinel risk levels mapped to true_positive "
+                            "(recorded on the scorecard subject string)")
     run_p.add_argument("--runs", type=int, default=3, help="runs per case")
     run_p.add_argument("--map-taxonomy", action="store_true",
                        help="translate cases into the subject's declared event "
                             "vocabulary, excluding those it does not cover")
     run_p.add_argument("--adaptive", action="store_true",
                        help="stop each case early once SPRT decides (Wald 1945)")
+    run_p.add_argument("--strict", action="store_true",
+                       help="fail the gate on MINOR findings too (the default "
+                            "gate fails only CRITICAL and MAJOR)")
     run_p.add_argument("--format", choices=_FORMATS, default="rich")
     run_p.add_argument("--out", type=Path, help="write report to file instead of stdout")
 
@@ -75,14 +81,22 @@ def _tool_version() -> str:
     return version("overruled")
 
 
+def _subject_adapter(args):
+    kwargs = {}
+    if args.adapter == "threatsentinel":
+        kwargs["tp_levels"] = tuple(args.tp_levels.split(","))
+    return _ADAPTERS[args.adapter](args.url, args.token, **kwargs)
+
+
 async def _run(args) -> int:
     paths = _case_paths(args)
     cases = load_cases(paths)
-    subject = _ADAPTERS[args.adapter](args.url, args.token)
+    subject = _subject_adapter(args)
     card = await Auditor(subject, runs_per_case=args.runs, adaptive=args.adaptive,
                          map_taxonomy=args.map_taxonomy,
                          tool_version=_tool_version(),
-                         pack_fingerprint=pack_fingerprint(paths)).run(cases)
+                         pack_fingerprint=pack_fingerprint(paths),
+                         strict=args.strict).run(cases)
     _emit(card, args.format, args.out)
     return 0 if card.passed else 1
 

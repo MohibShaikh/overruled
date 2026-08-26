@@ -76,6 +76,19 @@ class TestTransforms:
         assert out["target_user"] != "svc-backup-admin"
         assert out["source_ip"] == self.BASE["source_ip"]
 
+    def test_rename_user_reaches_nested_identity_keys(self):
+        base = {**self.BASE,
+                "payload": {"context": {"account_name": "b.kowalski",
+                                        "count": 47}}}
+        out = rename_user(base)
+        assert out["payload"]["context"]["account_name"] != "b.kowalski"
+        assert out["payload"]["context"]["count"] == 47
+
+    def test_rename_user_leaves_non_identity_keys_alone(self):
+        base = {"event_type": "login_anomaly", "user_agent": "curl/8.0"}
+        out = rename_user(base)
+        assert out["user_agent"] == "curl/8.0"
+
     def test_rebrand_domain_swaps_domains(self):
         out = rebrand_domain(self.BASE)
         assert out["url"] != self.BASE["url"]
@@ -87,3 +100,52 @@ class TestTransforms:
     def test_unknown_transform_raises(self):
         with pytest.raises(ValueError):
             apply_transforms(self.BASE, ["does_not_exist"])
+
+
+class TestNoOpDetection:
+    """A transform that changes nothing tests nothing; the author gets a
+    warning instead of false confidence."""
+
+    CASE = {
+        "id": "case-noop-001",
+        "name": "noop probe",
+        "expected_verdict": "true_positive",
+        "event": {"event_type": "login_anomaly",
+                  "source_ip": "203.0.113.66",
+                  "payload": {"count": 3, "window": "3m"}},
+        "metamorphic": ["reorder_payload"],
+    }
+    ARTIFACTS = [{"verdict": "true_positive"}]
+
+    def _run(self, case_overrides):
+        from overruled.checks.metamorphic import MetamorphicCheck
+        from overruled.models import AgentArtifact, Case
+
+        case = Case.model_validate({**self.CASE, **case_overrides})
+        artifacts = [AgentArtifact(verdict="true_positive")]
+        return MetamorphicCheck().run(
+            case, artifacts, [AgentArtifact(verdict="true_positive")],
+        )
+
+    def test_noop_transform_warns_minor(self):
+        # reorder_payload touches only payload; this event has none.
+        result = self._run({"event": {"event_type": "login_anomaly",
+                                      "source_ip": "203.0.113.66"}})
+        assert not result.passed
+        assert result.severity.value == "minor"
+
+    def test_effective_transform_stays_clean_when_invariant(self):
+        result = self._run({})
+        assert result is None or result.passed
+
+    def test_flipped_verdict_is_still_major(self):
+        from overruled.checks.metamorphic import MetamorphicCheck
+        from overruled.models import AgentArtifact, Case
+
+        case = Case.model_validate(self.CASE)
+        result = MetamorphicCheck().run(
+            case, [AgentArtifact(verdict="true_positive")],
+            [AgentArtifact(verdict="false_positive")],
+        )
+        assert not result.passed
+        assert result.severity.value == "major"

@@ -140,6 +140,27 @@ class TestConsistencyCheck:
         assert result.passed
 
 
+class TestSeverityGate:
+    def _score(self, strict: bool):
+        from overruled.auditor import Auditor
+        from overruled.subject import JSONAdapter
+
+        # Correct verdict but an unverifiable citation: OV-002 MINOR.
+        artifacts = [AgentArtifact(verdict="true_positive",
+                                   cited_iocs=["203.0.113.66", "8.8.8.8"])]
+        return Auditor(JSONAdapter("http://x"), runs_per_case=1,
+                       strict=strict)._score(make_case(), artifacts, [])
+
+    def test_minor_failure_warns_by_default(self):
+        score = self._score(strict=False)
+        assert score.passed
+        assert score.failures and all(
+            r.severity.value == "minor" for r in score.failures)
+
+    def test_strict_fails_on_minor(self):
+        assert not self._score(strict=True).passed
+
+
 class TestCaseLoading:
     def test_loads_seed_cases(self):
         cases = bundled_cases()
