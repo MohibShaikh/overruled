@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from .auditor import Auditor
-from .cases import BUNDLED_CASES, load_cases
+from .cases import BUNDLED_CASES, load_cases, pack_fingerprint
 from .report import print_card, to_junit, to_markdown, to_sarif
 from .subject import JSONAdapter, ThreatSentinelAdapter
 
@@ -69,11 +69,20 @@ def _case_paths(args) -> list[Path]:
     return list(args.cases) or [BUNDLED_CASES]
 
 
+def _tool_version() -> str:
+    from importlib.metadata import version
+
+    return version("overruled")
+
+
 async def _run(args) -> int:
-    cases = load_cases(_case_paths(args))
+    paths = _case_paths(args)
+    cases = load_cases(paths)
     subject = _ADAPTERS[args.adapter](args.url, args.token)
     card = await Auditor(subject, runs_per_case=args.runs, adaptive=args.adaptive,
-                         map_taxonomy=args.map_taxonomy).run(cases)
+                         map_taxonomy=args.map_taxonomy,
+                         tool_version=_tool_version(),
+                         pack_fingerprint=pack_fingerprint(paths)).run(cases)
     _emit(card, args.format, args.out)
     return 0 if card.passed else 1
 

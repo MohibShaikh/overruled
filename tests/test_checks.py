@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from overruled.cases import bundled_cases, load_case, load_cases
+from overruled.cases import bundled_cases, load_case, load_cases, pack_fingerprint
 from overruled.checks.consistency import ConsistencyCheck
 from overruled.checks.evidence import FabricatedEvidenceCheck, MissedEvidenceCheck
 from overruled.checks.verdict import VerdictCheck
@@ -169,6 +169,33 @@ class TestCaseLoading:
         )
         with pytest.raises(ValueError, match="quote it"):
             load_case(case_file)
+
+
+class TestPackFingerprint:
+    def _write(self, directory: Path, serial: str) -> Path:
+        directory.mkdir(parents=True, exist_ok=True)
+        case_file = directory / "case-fp-001.yaml"
+        case_file.write_text(
+            "id: case-fp-001\n"
+            "name: fingerprint probe\n"
+            "expected_verdict: true_positive\n"
+            "event:\n"
+            "  event_type: login_anomaly\n"
+            "  source_ip: 203.0.113.66\n"
+            f"  target_user: {serial}\n"
+        )
+        return case_file
+
+    def test_mutating_a_case_changes_the_hash(self, tmp_path):
+        case_file = self._write(tmp_path, "svc-backup-admin")
+        before = pack_fingerprint([case_file])
+        case_file.write_text(case_file.read_text().replace("svc", "svc-x"))
+        assert pack_fingerprint([case_file]) != before
+
+    def test_hash_is_independent_of_location(self, tmp_path):
+        first = self._write(tmp_path / "a", "svc-backup-admin")
+        second = self._write(tmp_path / "b", "svc-backup-admin")
+        assert pack_fingerprint([first]) == pack_fingerprint([second])
 
 
 class TestScopeClassification:

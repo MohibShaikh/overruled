@@ -119,6 +119,8 @@ class ExcludedCase(BaseModel):
 class Scorecard(BaseModel):
     subject: str
     started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    tool_version: str = ""
+    pack_fingerprint: str = ""
     cases: list[CaseScore] = Field(default_factory=list)
     excluded: list[ExcludedCase] = Field(default_factory=list)
     mapped_case_ids: list[str] = Field(default_factory=list)

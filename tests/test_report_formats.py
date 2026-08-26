@@ -15,6 +15,8 @@ _HOSTILE = 'detail with <tag> & "quotes" and \'apostrophes\''
 def _card() -> Scorecard:
     return Scorecard(
         subject="agent@<test>",
+        tool_version="0.2.0",
+        pack_fingerprint="a" * 64,
         cases=[
             CaseScore(
                 case_id="case-ok-001",
@@ -80,6 +82,11 @@ class TestSarif:
             assert result["properties"]["caseId"]
             assert isinstance(result["properties"]["runs"], int)
 
+    def test_provenance_is_declared(self):
+        run = self.doc["runs"][0]
+        assert run["tool"]["driver"]["version"] == "0.2.0"
+        assert run["properties"]["packFingerprint"] == "a" * 64
+
     def test_result_rule_ids_resolve_to_declared_rules(self):
         declared = {r["id"] for r in self.doc["runs"][0]["tool"]["driver"]["rules"]}
         for result in self.doc["runs"][0]["results"]:
@@ -107,6 +114,12 @@ class TestJunit:
         assert self.suite.get("tests") == str(len(cases)) == "2"
         assert self.suite.get("failures") == "1"
 
+    def test_provenance_is_declared(self):
+        props = {p.get("name"): p.get("value")
+                 for p in self.suite.find("properties").findall("property")}
+        assert props["toolVersion"] == "0.2.0"
+        assert props["packFingerprint"] == "a" * 64
+
     def test_passing_case_has_no_failure_child(self):
         passing = [tc for tc in self.suite.findall("testcase")
                    if tc.get("name").startswith("case-ok-001")]
@@ -132,6 +145,12 @@ def test_markdown_names_the_tool_and_every_case():
     assert text.startswith("# overruled scorecard:")
     assert "case-ok-001" in text and "case-bad-001" in text
     assert "Brier" in text
+
+
+def test_markdown_states_the_provenance():
+    text = to_markdown(_card())
+    assert "overruled 0.2.0" in text
+    assert "pack " + "a" * 12 in text
 
 
 def test_nothing_graded_is_not_a_pass():

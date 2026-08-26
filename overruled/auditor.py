@@ -16,14 +16,22 @@ class Auditor:
         runs_per_case: int = 3,
         adaptive: bool = False,
         map_taxonomy: bool = False,
+        tool_version: str = "",
+        pack_fingerprint: str = "",
     ):
         self.subject = subject
         self.runs = max(1, runs_per_case)
         self.adaptive = adaptive
         self.map_taxonomy = map_taxonomy
+        self.tool_version = tool_version
+        self.pack_fingerprint = pack_fingerprint
 
     async def run(self, cases: list[Case]) -> Scorecard:
-        card = Scorecard(subject=self.subject.name)
+        card = Scorecard(
+            subject=self.subject.name,
+            tool_version=self.tool_version,
+            pack_fingerprint=self.pack_fingerprint,
+        )
         for case in cases:
             expected = case.expected_verdict.value
             event = case.event

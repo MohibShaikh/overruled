@@ -117,6 +117,19 @@ def _reliability_line(case) -> str:
     return f"pass^{case.runs} in [{low:.2f}, {high:.2f}]"
 
 
+def _provenance_line(card: Scorecard) -> str | None:
+    """Which tool and which pack produced this, so archived scorecards
+    stay comparable across releases."""
+    if not card.tool_version and not card.pack_fingerprint:
+        return None
+    parts = []
+    if card.tool_version:
+        parts.append(f"overruled {card.tool_version}")
+    if card.pack_fingerprint:
+        parts.append(f"pack {card.pack_fingerprint[:12]}")
+    return ", ".join(parts)
+
+
 def to_markdown(card: Scorecard) -> str:
     lines = [
         f"# overruled scorecard: {card.subject}",
@@ -126,6 +139,9 @@ def to_markdown(card: Scorecard) -> str:
         f"{_accuracy_line(card)}",
         "",
     ]
+    provenance = _provenance_line(card)
+    if provenance:
+        lines.extend([provenance, ""])
     scope = _scope_line(card)
     if scope:
         lines.extend([scope, ""])
@@ -180,9 +196,13 @@ def to_sarif(card: Scorecard) -> str:
             "tool": {"driver": {
                 "name": "overruled",
                 "informationUri": "https://github.com/MohibShaikh/overruled",
+                "version": card.tool_version,
                 "rules": list(rules.values()),
             }},
-            "properties": {"errorRuns": card.total_errors},
+            "properties": {
+                "errorRuns": card.total_errors,
+                "packFingerprint": card.pack_fingerprint,
+            },
             "results": results,
         }],
     }
@@ -198,9 +218,13 @@ def to_junit(card: Scorecard) -> str:
         "skipped": str(len(card.excluded)),
     })
     props = SubElement(suite, "properties")
-    SubElement(props, "property", {
-        "name": "errorRuns", "value": str(card.total_errors),
-    })
+    for name, value in (
+        ("toolVersion", card.tool_version),
+        ("packFingerprint", card.pack_fingerprint),
+        ("errorRuns", str(card.total_errors)),
+    ):
+        if value:
+            SubElement(props, "property", {"name": name, "value": value})
     for c in card.cases:
         tc = SubElement(suite, "testcase", {
             "classname": card.subject,
@@ -258,6 +282,9 @@ def print_card(card: Scorecard) -> None:
         verdict = f"[red]SUBJECT FAILS[/red] ({card.total_failures} finding(s))"
     console.print(verdict)
     console.print(_accuracy_line(card))
+    provenance = _provenance_line(card)
+    if provenance:
+        console.print(f"[dim]{provenance}[/dim]")
     errors = _errors_line(card)
     if errors:
         console.print(errors)

@@ -1,5 +1,6 @@
 """Case loading from YAML files."""
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -69,14 +70,33 @@ def _validate_evidence(case: Case) -> None:
             )
 
 
-def load_cases(paths: list[Path]) -> list[Case]:
+def _case_files(paths: list[Path]) -> list[Path]:
     files: list[Path] = []
     for p in paths:
         if p.is_dir():
             files.extend(sorted(p.glob("*.y*ml")))
         elif p.is_file() and p.suffix in (".yaml", ".yml"):
             files.append(p)
-    cases = [load_case(f) for f in sorted(files)]
+    return files
+
+
+def pack_fingerprint(paths: list[Path]) -> str:
+    """sha256 over the case file names and bytes, sorted.
+
+    Scorecards claim to be reproducible and diffable; without this they
+    stop being comparable the moment the pack changes. Hashed by file
+    name, not full path, so the same pack hashes identically from a
+    wheel, a checkout, or a held-out directory.
+    """
+    digest = hashlib.sha256()
+    for f in _case_files(paths):
+        digest.update(f.name.encode())
+        digest.update(f.read_bytes())
+    return digest.hexdigest()
+
+
+def load_cases(paths: list[Path]) -> list[Case]:
+    cases = [load_case(f) for f in sorted(_case_files(paths))]
     if not cases:
         raise FileNotFoundError(f"no case files found in {paths}")
     return cases
