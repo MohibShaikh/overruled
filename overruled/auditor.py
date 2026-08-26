@@ -82,7 +82,7 @@ class Auditor:
         for i in range(self.runs):
             try:
                 artifact = await self.subject.investigate(event, i + offset)
-            except (httpx.HTTPError, TimeoutError):
+            except (httpx.HTTPError, TimeoutError, ValueError):
                 artifact = AgentArtifact(verdict=ERROR_VERDICT, run_index=i + offset)
             artifacts.append(artifact)
             if self.adaptive and i + 1 < self.runs:

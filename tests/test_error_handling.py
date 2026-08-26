@@ -10,7 +10,7 @@ import httpx
 import pytest
 
 from overruled.auditor import Auditor
-from overruled.models import Case
+from overruled.models import AgentArtifact, Case
 from overruled.subject import JSONAdapter, SubjectAdapter, ThreatSentinelAdapter
 
 CASE = Case(
@@ -86,6 +86,49 @@ async def test_raising_adapter_still_produces_a_scorecard():
     assert card.total_errors == 2
     correct, total = card.accuracy
     assert (correct, total) == (0, 0)
+    # Infrastructure noise must not convict: no CRITICAL from OV-001,
+    # but the case is not measured, so it cannot pass either.
+    assert not score.passed
+    ov001 = next(r for r in score.results if r.rule_id == "OV-001")
+    assert ov001.severity.value == "major"
+    assert "no gradable runs" in ov001.detail
+
+
+async def test_malformed_body_becomes_an_error_artifact_not_a_crash():
+    def handler(request):
+        return httpx.Response(200, json={"verdict": {}, "confidence": "high"})
+
+    artifact = await _adapter(handler).investigate(CASE.event)
+    assert artifact.verdict == "error"
+
+
+async def test_nan_confidence_is_rejected_at_the_boundary():
+    def handler(request):
+        return httpx.Response(200, json={"verdict": "true_positive",
+                                         "confidence": float("nan")})
+
+    artifact = await _adapter(handler).investigate(CASE.event)
+    assert artifact.verdict == "error"
+
+
+async def test_partial_errors_do_not_break_consistency():
+    """One dropped run among real ones is noise, not a flip-flop."""
+    calls = []
+
+    class HalfBroken(SubjectAdapter):
+        name = "half-broken"
+
+        async def investigate(self, event: dict, run_index: int = 0):
+            calls.append(run_index)
+            if run_index == 0:
+                raise httpx.ConnectError("refused")
+            return AgentArtifact(verdict="true_positive", run_index=run_index)
+
+    card = await Auditor(HalfBroken(), runs_per_case=3).run([CASE])
+    score = card.cases[0]
+    assert score.error_runs == 1
+    ov004 = next(r for r in score.results if r.rule_id == "OV-004")
+    assert ov004.passed
 
 
 def test_extract_iocs_ignores_the_event_it_was_handed():

@@ -10,7 +10,7 @@ from enum import StrEnum
 
 import httpx
 
-from .models import AgentArtifact
+from .models import ERROR_VERDICT, AgentArtifact
 
 
 async def _retry(client: httpx.AsyncClient, method: str, url: str,
@@ -97,21 +97,20 @@ class JSONAdapter(SubjectAdapter):
     async def investigate(self, event: dict, run_index: int = 0) -> AgentArtifact:
         try:
             response = await _retry(self.client, "POST", "/", json={"event_data": event})
-        except httpx.HTTPError:
-            return AgentArtifact(verdict="error", run_index=run_index)
-        if response.status_code != 200:
-            return AgentArtifact(verdict="error", run_index=run_index)
-        try:
+            if response.status_code != 200:
+                return AgentArtifact(verdict=ERROR_VERDICT, run_index=run_index)
             body = response.json()
-        except ValueError:
-            return AgentArtifact(verdict="error", run_index=run_index)
-        return AgentArtifact(
-            verdict=body.get("verdict") or None,
-            confidence=body.get("confidence"),
-            cited_iocs=[str(i) for i in (body.get("cited_iocs") or [])],
-            raw=body,
-            run_index=run_index,
-        )
+            return AgentArtifact(
+                verdict=body.get("verdict") or None,
+                confidence=body.get("confidence"),
+                cited_iocs=[str(i) for i in (body.get("cited_iocs") or [])],
+                raw=body,
+                run_index=run_index,
+            )
+        except (httpx.HTTPError, ValueError):
+            # ValueError covers ValidationError and json parse errors:
+            # a malformed body says nothing about the agent's judgment.
+            return AgentArtifact(verdict=ERROR_VERDICT, run_index=run_index)
 
 
 class ThreatSentinelAdapter(SubjectAdapter):
@@ -192,11 +191,10 @@ class ThreatSentinelAdapter(SubjectAdapter):
                     raw={"investigation_id": inv_id, "status_code": result.status_code},
                 )
             body = result.json()
+            return self._to_artifact(body, inv_id, run_index,
+                                     int((time.perf_counter() - started) * 1000))
         except (httpx.HTTPError, TimeoutError, ValueError, KeyError):
-            return AgentArtifact(verdict="error", run_index=run_index)
-
-        return self._to_artifact(body, inv_id, run_index,
-                                 int((time.perf_counter() - started) * 1000))
+            return AgentArtifact(verdict=ERROR_VERDICT, run_index=run_index)
 
     async def _wait_for(self, inv_id: str, timeout_s: float = 90.0) -> dict:
         import asyncio

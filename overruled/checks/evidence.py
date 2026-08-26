@@ -56,22 +56,23 @@ class FabricatedEvidenceCheck:
         )
 
     def _grounded(self, ioc: str, known: set[str], event_text: str) -> bool:
-        """Whether the case actually contains the indicator cited.
+        """Whether the case actually contains what the citation asserts.
 
-        Containment is one-directional on purpose. An agent may wrap a
-        real indicator in context (203.0.113.66:445), and that is still
-        the indicator. A citation that is only a fragment of one
-        (203.0.113.6 against a case holding 203.0.113.66) is a
-        different indicator, and near-miss indicators are the
-        hallucination this rule exists to catch.
+        Every indicator-shaped token inside a citation must be known.
+        Grounding on any-token would let one real IOC launder a string
+        full of fabricated ones ("203.0.113.66 exfil.evil.ru"). A
+        citation may wrap an indicator in context (203.0.113.66:445),
+        and free-text citations ground by whole-token verbatim match in
+        the event. A fragment of a real indicator (203.0.113.6 against
+        203.0.113.66) is a different indicator and never grounds.
         """
         ioc = ioc.strip()
         if not ioc:
             return False
         lowered = {k.casefold() for k in known}
-        candidates = {ioc} | set(_tokens_in(ioc))
-        if any(c.casefold() in lowered for c in candidates):
-            return True
+        tokens = _tokens_in(ioc)
+        if tokens:
+            return all(t.casefold() in lowered for t in tokens)
         # free-text citations (command lines, tool names) are grounded
         # when the event carries them verbatim as a whole token
         return _contains_token(event_text, ioc)

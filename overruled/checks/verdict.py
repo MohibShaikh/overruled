@@ -1,6 +1,6 @@
 """Verdict correctness: did the agent rule the case as ground truth does?"""
 
-from ..models import AgentArtifact, Case, CheckResult, Severity
+from ..models import ERROR_VERDICT, AgentArtifact, Case, CheckResult, Severity
 
 
 class VerdictCheck:
@@ -9,16 +9,28 @@ class VerdictCheck:
 
     def run(self, case: Case, artifacts: list[AgentArtifact]) -> CheckResult:
         expected = case.expected_verdict.value
-        wrong = [a for a in artifacts if a.verdict != expected]
+        gradable = [a for a in artifacts if a.verdict != ERROR_VERDICT]
+        if not gradable:
+            # Transport noise is not a ruling -- but dodging by erroring
+            # on every run must not pass either.
+            return CheckResult(
+                rule_id=self.rule_id, check=self.check, passed=False,
+                severity=Severity.MAJOR,
+                detail="no gradable runs (all ended in infrastructure "
+                       "errors); the case was not measured",
+            )
+        wrong = [a for a in gradable if a.verdict != expected]
         if not wrong:
             return CheckResult(
                 rule_id=self.rule_id, check=self.check, passed=True,
-                detail=f"{len(artifacts)}/{len(artifacts)} runs ruled {expected}",
+                detail=f"{len(gradable)}/{len(gradable)} runs ruled {expected}",
             )
         rulings = {a.verdict or "none" for a in wrong}
+        errored = len(artifacts) - len(gradable)
+        suffix = f" (+{errored} infrastructure-error run(s) excluded)" if errored else ""
         return CheckResult(
             rule_id=self.rule_id, check=self.check, passed=False,
             severity=Severity.CRITICAL,
             detail=f"expected {expected}, got {sorted(rulings)} on "
-                   f"{len(wrong)}/{len(artifacts)} runs",
+                   f"{len(wrong)}/{len(gradable)} runs{suffix}",
         )

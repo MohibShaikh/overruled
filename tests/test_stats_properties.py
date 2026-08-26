@@ -71,10 +71,19 @@ class TestMcNemar:
 
 class TestKappa:
     @given(st.lists(st.sampled_from(["tp", "fp", "esc"]), min_size=4, max_size=40))
-    def test_bounded_below_by_negative_one(self, expected):
+    def test_perfect_agreement_is_one(self, expected):
         pairs = [(e, e) for e in expected]
         kappa = cohens_kappa(pairs)
         assert kappa == 1.0 or kappa is None
+
+    @given(
+        st.lists(st.sampled_from(["tp", "fp"]), min_size=4, max_size=40),
+        st.lists(st.sampled_from(["tp", "fp"]), min_size=4, max_size=40),
+    )
+    def test_bounded_below_by_negative_one(self, expected, actual):
+        kappa = cohens_kappa(list(zip(expected, actual, strict=False)))
+        if kappa is not None:
+            assert -1.0 <= kappa <= 1.0
 
     @given(st.lists(st.sampled_from(["a", "b"]), min_size=4, max_size=60))
     def test_label_swap_symmetry(self, labels):

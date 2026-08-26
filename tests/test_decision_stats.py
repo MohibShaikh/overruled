@@ -89,7 +89,7 @@ class TestAlertParroting:
 
     def _artifact(self, verdict="true_positive", cited=("1.2.3.4",)):
         return AgentArtifact(
-            verdict=verdict, summary="", cited_iocs=list(cited),
+            verdict=verdict, cited_iocs=list(cited),
         )
 
     def test_unjustified_tp_is_critical(self):
@@ -104,7 +104,7 @@ class TestAlertParroting:
     def test_fp_verdict_needs_no_evidence(self):
         case = self._case()
         case.expected_verdict = "false_positive"
-        artifact = AgentArtifact(verdict="false_positive", summary="", cited_iocs=[])
+        artifact = AgentArtifact(verdict="false_positive", cited_iocs=[])
         result = AlertParrotingCheck().run(case, [artifact])
         assert result.passed
 
@@ -119,7 +119,7 @@ class TestAlertParroting:
     def test_discovery_surfaced_passes(self):
         disc = EvidenceItem(ioc="svc-backup-admin", kind="account")
         artifact = AgentArtifact(
-            verdict="true_positive", summary="",
+            verdict="true_positive",
             cited_iocs=["1.2.3.4", "svc-backup-admin"],
         )
         result = AlertParrotingCheck().run(

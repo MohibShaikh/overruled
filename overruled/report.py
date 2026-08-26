@@ -7,6 +7,7 @@ Wilson score intervals and per-case reliability as pass^k bounds
 """
 
 import json
+import re
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 from .models import ERROR_VERDICT, Scorecard, Severity
@@ -166,7 +167,12 @@ def to_markdown(card: Scorecard) -> str:
                 lines.append(f"- {r.check}: {r.detail}")
         else:
             for r in case.failures:
-                lines.append(f"- **{r.rule_id} ({r.severity.value})** {r.check}: {r.detail}")
+                # backticked so agent-controlled text cannot inject
+                # markdown links into published scorecards
+                lines.append(
+                    f"- **{r.rule_id} ({r.severity.value})** {r.check}: "
+                    f"`{r.detail}`"
+                )
         lines.append("")
     calibration = _calibration_line(card)
     if calibration:
@@ -217,8 +223,13 @@ def to_sarif(card: Scorecard) -> str:
 
 def to_junit(card: Scorecard) -> str:
     """JUnit XML so any CI system can gate on overruled natively."""
+    def xml_safe(text: str) -> str:
+        # XML 1.0 forbids these code points outright; leaving them in
+        # produces a report strict parsers must reject
+        return re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
+
     suite = Element("testsuite", {
-        "name": f"overruled:{card.subject}",
+        "name": xml_safe(f"overruled:{card.subject}"),
         "tests": str(len(card.cases) + len(card.excluded)),
         "failures": str(sum(1 for c in card.cases if not c.passed)),
         "skipped": str(len(card.excluded)),
@@ -233,25 +244,29 @@ def to_junit(card: Scorecard) -> str:
             SubElement(props, "property", {"name": name, "value": value})
     for c in card.cases:
         tc = SubElement(suite, "testcase", {
-            "classname": card.subject,
-            "name": f"{c.case_id} ({c.runs} runs)",
+            "classname": xml_safe(card.subject),
+            "name": xml_safe(f"{c.case_id} ({c.runs} runs)"),
         })
         if not c.passed:
             failure = SubElement(tc, "failure", {
-                "message": "; ".join(f"{f.rule_id}: {f.detail}" for f in c.failures),
+                "message": xml_safe("; ".join(
+                    f"{f.rule_id}: {f.detail}" for f in c.failures)),
             })
-            failure.text = "\n".join(f"{f.rule_id} [{f.severity.value}] {f.detail}"
-                                     for f in c.failures)
+            failure.text = xml_safe(
+                "\n".join(f"{f.rule_id} [{f.severity.value}] {f.detail}"
+                          for f in c.failures)
+            )
     for e in card.excluded:
         tc = SubElement(suite, "testcase", {
-            "classname": card.subject, "name": f"{e.case_id} (not graded)",
+            "classname": card.subject, "name": xml_safe(f"{e.case_id} (not graded)"),
         })
-        SubElement(tc, "skipped", {"message": f"{e.reason}: {e.event_type}"})
+        SubElement(tc, "skipped", {"message": xml_safe(f"{e.reason}: {e.event_type}")})
     return tostring(suite, encoding="unicode")
 
 
 def print_card(card: Scorecard) -> None:
     from rich.console import Console
+    from rich.markup import escape
     from rich.table import Table
 
     console = Console()
@@ -268,12 +283,16 @@ def print_card(card: Scorecard) -> None:
             parts = []
             for f in case.failures:
                 color = "red" if f.severity == Severity.CRITICAL else "yellow"
-                parts.append(f"[{color}]{f.rule_id}[/{color}] {f.check}: {f.detail}")
+                # details carry agent-controlled text; escaped so a
+                # citation like "[/] cannot forge or break the report
+                parts.append(
+                    f"[{color}]{f.rule_id}[/{color}] {escape(f.check)}: {escape(f.detail)}"
+                )
             findings = "\n".join(parts)
         mark = _case_mark(case)
         color = "green" if mark == "PASS" else "yellow" if mark == "INCOMPLETE" else "red"
         table.add_row(
-            f"{case.case_name}\n[dim]{case.case_id}[/dim]",
+            f"{escape(case.case_name)}\n[dim]{escape(case.case_id)}[/dim]",
             str(case.runs),
             f"[{color}]{mark}[/{color}]",
             findings,

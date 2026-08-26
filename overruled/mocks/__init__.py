@@ -65,7 +65,7 @@ def classify(event: dict) -> tuple[str, list[str]]:
 
 class ReferenceAgent(BaseHTTPRequestHandler):
     def do_POST(self):  # noqa: N802
-        length = int(self.headers.get("content-length", 0))
+        length = max(0, min(int(self.headers.get("content-length", 0)), 1_000_000))
         body = json.loads(self.rfile.read(length) or b"{}")
         verdict, cited = classify(body.get("event_data") or {})
         self._reply({"verdict": verdict, "cited_iocs": sorted(set(cited)),
@@ -85,7 +85,7 @@ class ReferenceAgent(BaseHTTPRequestHandler):
 
 class BrokenAgent(BaseHTTPRequestHandler):
     def do_POST(self):  # noqa: N802
-        length = int(self.headers.get("content-length", 0))
+        length = max(0, min(int(self.headers.get("content-length", 0)), 1_000_000))
         self.rfile.read(length)
         data = json.dumps(
             {"verdict": "false_positive", "cited_iocs": [], "confidence": 0.99}

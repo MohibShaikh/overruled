@@ -13,9 +13,11 @@ class ExpectedVerdict(StrEnum):
     ESCALATE = "escalate"
 
 
-#: Artifact marker for a run that never produced a ruling: transport
-#: failure, 5xx, unreadable body, timeout. Excluded from every estimate
-#: because infrastructure noise must not look like the agent's fault.
+#: Artifact marker for a run that never produced a usable ruling:
+#: transport failure, 5xx, unreadable or malformed body, timeout.
+#: Excluded from accuracy and calibration because infrastructure noise
+#: must not look like the agent's fault; a case with no gradable runs
+#: still fails OV-001, so erroring on everything buys nothing.
 ERROR_VERDICT = "error"
 
 
@@ -61,9 +63,10 @@ class AgentArtifact(BaseModel):
     """
 
     verdict: str | None = None
-    risk_score: float | None = None
+    risk_score: float | None = Field(default=None, allow_inf_nan=False)
     risk_level: str | None = None
-    confidence: float | None = None
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0,
+                                     allow_inf_nan=False)
     cited_iocs: list[str] = Field(default_factory=list)
     enriched_iocs: list[str] = Field(default_factory=list)
     recommended_actions: list[str] = Field(default_factory=list)

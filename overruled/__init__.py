@@ -5,4 +5,6 @@ agent, then scores the agent's verdicts for correctness, fabricated
 evidence, missed evidence, and consistency.
 """
 
-__version__ = "0.1.0"
+from importlib.metadata import version as _version
+
+__version__ = _version("overruled")

@@ -95,6 +95,17 @@ class TestFabricatedEvidenceCheck:
         artifact = AgentArtifact(cited_iocs=["vssadmin delete shadows"])
         assert FabricatedEvidenceCheck().run(case, [artifact]).passed
 
+    def test_one_real_token_cannot_launder_a_fabricated_composite(self):
+        """A citation dumping a planted IOC plus invented ones grounds
+        none of them: every indicator-shaped token must be known."""
+        artifact = AgentArtifact(
+            cited_iocs=["203.0.113.66 exfil.evil-attacker.ru"],
+            enriched_iocs=["whois.example"],
+        )
+        result = FabricatedEvidenceCheck().run(make_case(), [artifact])
+        assert not result.passed
+        assert result.severity.value == "critical"
+
 
 class TestMissedEvidenceCheck:
     def test_fails_when_mandatory_evidence_unsurfaced(self):
@@ -217,6 +228,18 @@ class TestPackFingerprint:
         first = self._write(tmp_path / "a", "svc-backup-admin")
         second = self._write(tmp_path / "b", "svc-backup-admin")
         assert pack_fingerprint([first]) == pack_fingerprint([second])
+
+    def test_hash_is_independent_of_argument_order(self, tmp_path):
+        one = self._write(tmp_path / "a", "svc-backup-admin")
+        two = self._write(tmp_path / "b", "other-admin")
+        forward = pack_fingerprint([one, two])
+        assert pack_fingerprint([two, one]) == forward
+
+    def test_duplicate_case_ids_are_rejected(self, tmp_path):
+        for name in ("pack_a", "pack_b"):
+            self._write(tmp_path / name, "svc-backup-admin")
+        with pytest.raises(ValueError, match="duplicate case ids"):
+            load_cases([tmp_path / "pack_a", tmp_path / "pack_b"])
 
 
 class TestScopeClassification:

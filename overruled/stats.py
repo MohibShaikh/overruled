@@ -109,13 +109,16 @@ def sprt_decide(
 ) -> str | None:
     """Wald's sequential probability ratio test.
 
+    Raises on impossible inputs (negative or successes beyond trials);
+    the function is importable and must not silently accept nonsense.
+
     Returns 'accept_h1' once the evidence supports reliable (>= p1),
     'accept_h0' once it supports unreliable (<= p0), or None to keep
     running. H1 accepted when LLR >= log((1-beta)/alpha); H0 when
     LLR <= log(beta/(1-alpha)).
     """
-    if trials < 0:
-        raise ValueError("trials must be non-negative")
+    if trials < 0 or not 0 <= successes <= trials:
+        raise ValueError("need 0 <= successes <= trials")
     llr = successes * math.log(p1 / p0) + (trials - successes) * math.log(
         (1 - p1) / (1 - p0)
     )

@@ -116,27 +116,36 @@ async def _compare(args) -> int:
     for name, _ in subjects:
         table.add_column(name, justify="center")
 
-    cards: dict[str, dict[str, bool]] = {name: {} for name, _ in subjects}
+    # None marks a case the subject declined as out of scope: a scope
+    # difference is not a skill difference, so skips stay out of McNemar.
+    results: dict[str, dict[str, bool | None]] = {name: {} for name, _ in subjects}
     for case in cases:
         row = [f"{case.name}\n[dim]{case.id}[/dim]"]
         for name, adapter in subjects:
             card = await Auditor(adapter, runs_per_case=args.runs,
                                  map_taxonomy=args.map_taxonomy).run([case])
-            cards[name][case.id] = card.passed
-            row.append("[green]PASS[/green]" if card.passed else "[red]FAIL[/red]")
+            if card.excluded and not card.cases:
+                results[name][case.id] = None
+                row.append("[yellow]SKIP[/yellow]")
+            else:
+                results[name][case.id] = card.passed
+                row.append("[green]PASS[/green]" if card.passed else "[red]FAIL[/red]")
         table.add_row(*row)
 
     console.print(table)
     summary = "  ".join(
-        f"{name}: {sum(v.values())}/{len(cases)}" for name, v in cards.items()
+        f"{name}: {sum(1 for v in r.values() if v)}/"
+        f"{sum(1 for v in r.values() if v is not None)}"
+        for name, r in results.items()
     )
     console.print(summary)
 
     names = [name for name, _ in subjects]
     if len(names) == 2:
-        a, b = cards[names[0]], cards[names[1]]
-        only_a = sum(1 for cid in a if a[cid] and not b[cid])
-        only_b = sum(1 for cid in a if b[cid] and not a[cid])
+        a, b = results[names[0]], results[names[1]]
+        graded = [cid for cid in a if a[cid] is not None and b[cid] is not None]
+        only_a = sum(1 for cid in graded if a[cid] and not b[cid])
+        only_b = sum(1 for cid in graded if b[cid] and not a[cid])
         p = mcnemar_exact(only_a, only_b)
         call = "significant at 0.05" if p < 0.05 else "not significant"
         console.print(

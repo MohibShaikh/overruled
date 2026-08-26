@@ -86,10 +86,11 @@ def pack_fingerprint(paths: list[Path]) -> str:
     Scorecards claim to be reproducible and diffable; without this they
     stop being comparable the moment the pack changes. Hashed by file
     name, not full path, so the same pack hashes identically from a
-    wheel, a checkout, or a held-out directory.
+    wheel, a checkout, or a held-out directory -- and identically
+    however the paths were ordered on the command line.
     """
     digest = hashlib.sha256()
-    for f in _case_files(paths):
+    for f in sorted(_case_files(paths)):
         digest.update(f.name.encode())
         digest.update(f.read_bytes())
     return digest.hexdigest()
@@ -99,4 +100,10 @@ def load_cases(paths: list[Path]) -> list[Case]:
     cases = [load_case(f) for f in sorted(_case_files(paths))]
     if not cases:
         raise FileNotFoundError(f"no case files found in {paths}")
+    counts: dict[str, int] = {}
+    for c in cases:
+        counts[c.id] = counts.get(c.id, 0) + 1
+    duplicates = sorted(cid for cid, n in counts.items() if n > 1)
+    if duplicates:
+        raise ValueError(f"duplicate case ids across the pack: {duplicates}")
     return cases
