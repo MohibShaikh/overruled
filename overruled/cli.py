@@ -51,6 +51,9 @@ def main(argv: list[str] | None = None) -> int:
                             "gate fails only CRITICAL and MAJOR)")
     run_p.add_argument("--format", choices=_FORMATS, default="rich")
     run_p.add_argument("--out", type=Path, help="write report to file instead of stdout")
+    run_p.add_argument("--per-case-timeout", type=float, default=300.0,
+                       help="wall-clock seconds before a single case is aborted "
+                            "(default: 300)")
 
     cmp_p = sub.add_parser("compare", help="audit several subjects on the same cases")
     cmp_p.add_argument("cases", nargs="*", type=Path)
@@ -61,6 +64,7 @@ def main(argv: list[str] | None = None) -> int:
                        help="subject contract: ThreatSentinel REST or minimal JSON")
     cmp_p.add_argument("--map-taxonomy", action="store_true")
     cmp_p.add_argument("--runs", type=int, default=3)
+    cmp_p.add_argument("--per-case-timeout", type=float, default=300.0)
 
     args = parser.parse_args(argv)
 
@@ -96,7 +100,8 @@ async def _run(args) -> int:
                          map_taxonomy=args.map_taxonomy,
                          tool_version=_tool_version(),
                          pack_fingerprint=pack_fingerprint(paths),
-                         strict=args.strict).run(cases)
+                         strict=args.strict,
+                         per_case_timeout=args.per_case_timeout).run(cases)
     _emit(card, args.format, args.out)
     return 0 if card.passed else 1
 
@@ -123,7 +128,8 @@ async def _compare(args) -> int:
         row = [f"{case.name}\n[dim]{case.id}[/dim]"]
         for name, adapter in subjects:
             card = await Auditor(adapter, runs_per_case=args.runs,
-                                 map_taxonomy=args.map_taxonomy).run([case])
+                                 map_taxonomy=args.map_taxonomy,
+                                 per_case_timeout=args.per_case_timeout).run([case])
             if card.excluded and not card.cases:
                 results[name][case.id] = None
                 row.append("[yellow]SKIP[/yellow]")

@@ -47,7 +47,9 @@ class FlakyAgent(SubjectAdapter):
         raise TimeoutError("agent hung")
 
 
-async def test_transient_5xx_retries_then_succeeds():
+async def test_post_5xx_does_not_retry():
+    """A POST 5xx means the server received and choked; retrying risks
+    creating a duplicate investigation at a stateful endpoint."""
     calls = []
 
     def handler(request):
@@ -57,8 +59,8 @@ async def test_transient_5xx_retries_then_succeeds():
         return httpx.Response(200, json={"verdict": "true_positive", "confidence": 0.9})
 
     artifact = await _adapter(handler).investigate(CASE.event)
-    assert len(calls) == 3
-    assert artifact.verdict == "true_positive"
+    assert len(calls) == 1
+    assert artifact.verdict == "error"
 
 
 async def test_persistent_5xx_becomes_an_error_artifact():
@@ -129,6 +131,27 @@ async def test_partial_errors_do_not_break_consistency():
     assert score.error_runs == 1
     ov004 = next(r for r in score.results if r.rule_id == "OV-004")
     assert ov004.passed
+
+
+async def test_per_case_timeout_aborts_a_hanging_agent():
+    import threading
+
+    block = threading.Event()
+
+    class SlowAgent(SubjectAdapter):
+        name = "slow"
+        async def investigate(self, event, run_index=0):
+            # Thread-safe block that is not affected by the async sleep monkeypatch
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, block.wait)
+            return AgentArtifact(verdict="true_positive")
+
+    card = await Auditor(SlowAgent(), runs_per_case=3,
+                         per_case_timeout=0.1).run([CASE])
+    score = card.cases[0]
+    assert score.error_runs > 0
+    assert not score.passed
+    block.set()
 
 
 def test_extract_iocs_ignores_the_event_it_was_handed():

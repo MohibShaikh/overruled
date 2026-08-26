@@ -15,14 +15,17 @@ from .models import ERROR_VERDICT, AgentArtifact
 
 async def _retry(client: httpx.AsyncClient, method: str, url: str,
                  **kwargs) -> httpx.Response:
-    """Send a request, retrying transport errors and 5xxs twice.
+    """Send a request, retrying on transport errors and 5xxs.
 
     A vendor API blip must not look like the agent botching the case.
-    Exhausted retries return the last response (or re-raise) so the
-    caller records an error artifact on its own terms.
+    For GETs (idempotent) we also retry 5xxs.  For POSTs (stateful)
+    we only retry on connection-level failures — a 5xx means the server
+    already received the request and may have acted on it, so retrying
+    could create a duplicate investigation.
     """
     import asyncio
 
+    is_post = method.upper() == "POST"
     for _ in range(2):
         try:
             response = await client.request(method, url, **kwargs)
@@ -30,6 +33,8 @@ async def _retry(client: httpx.AsyncClient, method: str, url: str,
             pass
         else:
             if response.status_code < 500:
+                return response
+            if is_post:
                 return response
         await asyncio.sleep(0.5)
     return await client.request(method, url, **kwargs)
