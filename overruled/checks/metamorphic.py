@@ -8,7 +8,7 @@ the case author knows which transforms preserve ground truth.
 import json
 
 from ..metamorphic import apply_transforms
-from ..models import AgentArtifact, Case, CheckResult, Severity
+from ..models import ERROR_VERDICT, AgentArtifact, Case, CheckResult, Severity
 
 
 class MetamorphicCheck:
@@ -25,8 +25,14 @@ class MetamorphicCheck:
             return None
         if not artifacts or not transformed_artifacts:
             return None
-        base_rulings = {a.verdict or "none" for a in artifacts}
-        variant_rulings = {a.verdict or "none" for a in transformed_artifacts}
+        base_rulings = {a.verdict for a in artifacts if a.verdict != ERROR_VERDICT}
+        variant_rulings = {a.verdict for a in transformed_artifacts
+                           if a.verdict != ERROR_VERDICT}
+        # Infrastructure noise on both sides tests nothing about the
+        # agent; asymmetric errors (base errors, variant succeeds) are
+        # also infra, not a flip-flop.
+        if not base_rulings or not variant_rulings:
+            return None
         stable = base_rulings & variant_rulings
         if not (stable and base_rulings <= variant_rulings
                 and variant_rulings <= base_rulings):

@@ -141,7 +141,6 @@ async def test_per_case_timeout_aborts_a_hanging_agent():
     class SlowAgent(SubjectAdapter):
         name = "slow"
         async def investigate(self, event, run_index=0):
-            # Thread-safe block that is not affected by the async sleep monkeypatch
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, block.wait)
             return AgentArtifact(verdict="true_positive")
@@ -151,6 +150,31 @@ async def test_per_case_timeout_aborts_a_hanging_agent():
     score = card.cases[0]
     assert score.error_runs > 0
     assert not score.passed
+    block.set()
+
+
+async def test_timeout_preserves_partial_results():
+    """When the first run succeeds but the second hangs, the scorecard
+    reflects the partial results — not a total failure."""
+    import threading
+
+    block = threading.Event()
+
+    class HangsOnSecond(SubjectAdapter):
+        name = "partial"
+        async def investigate(self, event, run_index=0):
+            if run_index == 1:
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(None, block.wait)
+            return AgentArtifact(verdict="true_positive", run_index=run_index)
+
+    card = await Auditor(HangsOnSecond(), runs_per_case=3,
+                         per_case_timeout=0.1).run([CASE])
+    score = card.cases[0]
+    assert score.runs == 3
+    assert score.error_runs == 1
+    # First and third runs succeeded; the case is measured, not total failure
+    assert score.verdict_correct_runs == 2
     block.set()
 
 

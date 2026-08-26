@@ -177,14 +177,21 @@ class ThreatSentinelAdapter(SubjectAdapter):
             )
             if created.is_error:
                 return AgentArtifact(
-                    verdict="error", run_index=run_index,
+                    verdict=ERROR_VERDICT, run_index=run_index,
                     raw={"status_code": created.status_code},
                 )
-            inv_id = created.json()["investigation_id"]
+            body = created.json()
+            inv_id = body.get("investigation_id")
+            if not inv_id:
+                return AgentArtifact(
+                    verdict=ERROR_VERDICT, run_index=run_index,
+                    raw={"status_code": created.status_code,
+                         "body_preview": str(body)[:200]},
+                )
             status = await self._wait_for(inv_id)
             if status.get("status") == "failed":
                 return AgentArtifact(
-                    verdict="error", run_index=run_index,
+                    verdict=ERROR_VERDICT, run_index=run_index,
                     raw={"investigation_id": inv_id, "status": "failed"},
                 )
             result = await _retry(
@@ -192,8 +199,9 @@ class ThreatSentinelAdapter(SubjectAdapter):
             )
             if result.is_error:
                 return AgentArtifact(
-                    verdict="error", run_index=run_index,
-                    raw={"investigation_id": inv_id, "status_code": result.status_code},
+                    verdict=ERROR_VERDICT, run_index=run_index,
+                    raw={"investigation_id": inv_id,
+                         "status_code": result.status_code},
                 )
             body = result.json()
             return self._to_artifact(body, inv_id, run_index,

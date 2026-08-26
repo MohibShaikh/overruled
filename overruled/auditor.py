@@ -79,32 +79,36 @@ class Auditor:
 
         SPRT (Wald 1945) stops early once the run record statistically
         supports reliable or unreliable, saving subject API calls.
-        The whole batch is capped by per_case_timeout so a hanging
-        agent cannot block the audit indefinitely.
+        Each request is individually capped by per_case_timeout so a
+        hanging agent cannot block the audit indefinitely.  Partial
+        results are preserved: a timeout after 4 of 5 runs does not
+        discard the 4 that finished.
         """
         import asyncio
 
-        async def _inner() -> list[AgentArtifact]:
-            artifacts: list[AgentArtifact] = []
-            for i in range(self.runs):
-                try:
-                    artifact = await self.subject.investigate(event, i + offset)
-                except (httpx.HTTPError, TimeoutError, ValueError):
-                    artifact = AgentArtifact(verdict=ERROR_VERDICT, run_index=i + offset)
-                artifacts.append(artifact)
-                if self.adaptive and i + 1 < self.runs:
-                    gradable = [a for a in artifacts if a.verdict != ERROR_VERDICT]
-                    if gradable:
-                        correct = sum(1 for a in gradable if a.verdict == expected)
-                        decision = sprt_decide(correct, len(gradable))
-                        if decision is not None:
-                            break
-            return artifacts
+        async def _run_one(i: int) -> AgentArtifact:
+            try:
+                return await self.subject.investigate(event, i + offset)
+            except (httpx.HTTPError, TimeoutError, ValueError):
+                return AgentArtifact(verdict=ERROR_VERDICT, run_index=i + offset)
 
-        try:
-            return await asyncio.wait_for(_inner(), timeout=self.per_case_timeout)
-        except TimeoutError:
-            return [AgentArtifact(verdict=ERROR_VERDICT, run_index=offset)]
+        artifacts: list[AgentArtifact] = []
+        for i in range(self.runs):
+            try:
+                artifact = await asyncio.wait_for(
+                    _run_one(i), timeout=self.per_case_timeout,
+                )
+            except TimeoutError:
+                artifact = AgentArtifact(verdict=ERROR_VERDICT, run_index=i + offset)
+            artifacts.append(artifact)
+            if self.adaptive and i + 1 < self.runs:
+                gradable = [a for a in artifacts if a.verdict != ERROR_VERDICT]
+                if gradable:
+                    correct = sum(1 for a in gradable if a.verdict == expected)
+                    decision = sprt_decide(correct, len(gradable))
+                    if decision is not None:
+                        break
+        return artifacts
 
     def _score(
         self,

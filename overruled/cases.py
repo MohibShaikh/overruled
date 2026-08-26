@@ -91,8 +91,12 @@ def pack_fingerprint(paths: list[Path]) -> str:
     """
     digest = hashlib.sha256()
     for f in sorted(_case_files(paths)):
-        digest.update(f.name.encode())
-        digest.update(f.read_bytes())
+        name = f.name.encode()
+        content = f.read_bytes()
+        digest.update(len(name).to_bytes(4, "big"))
+        digest.update(name)
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
     return digest.hexdigest()
 
 

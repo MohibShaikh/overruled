@@ -149,3 +149,30 @@ class TestNoOpDetection:
         )
         assert not result.passed
         assert result.severity.value == "major"
+
+    def test_asymmetric_infrastructure_errors_are_not_a_flip(self):
+        """When the base errors but the variant succeeds (or vice versa),
+        OV-005 must not fire — asymmetric infra is not a metamorphic
+        regression."""
+        from overruled.checks.metamorphic import MetamorphicCheck
+        from overruled.models import ERROR_VERDICT, AgentArtifact, Case
+
+        case = Case.model_validate(self.CASE)
+        result = MetamorphicCheck().run(
+            case,
+            [AgentArtifact(verdict=ERROR_VERDICT)],
+            [AgentArtifact(verdict="true_positive")],
+        )
+        assert result is None
+
+    def test_all_error_runs_on_both_sides_is_not_applicable(self):
+        from overruled.checks.metamorphic import MetamorphicCheck
+        from overruled.models import ERROR_VERDICT, AgentArtifact, Case
+
+        case = Case.model_validate(self.CASE)
+        result = MetamorphicCheck().run(
+            case,
+            [AgentArtifact(verdict=ERROR_VERDICT)],
+            [AgentArtifact(verdict=ERROR_VERDICT)],
+        )
+        assert result is None
